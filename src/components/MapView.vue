@@ -21,27 +21,60 @@
 import { defineComponent, onMounted, ref } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import mockMap from '../assets/MockMap.svg'
+import * as gps from '../composables/useGeolocation'
+import { watch } from 'vue'
 
 export default defineComponent({
   setup() {
+    // this is setup for test
+    const centerLat = 18.755652251965408
+    const centerLng = 99.03422248332312
+    const delta = 0.0001 // ~11 meters
+
+    const bounds = L.latLngBounds(
+      [centerLat - delta, centerLng - 2 * delta], // Southwest corner
+      [centerLat + delta, centerLng + 2 * delta], // Northeast corner
+    )
     const mapContainer = ref<HTMLElement | null>(null)
     const map = ref<L.Map | null>(null)
+    const blueDot = ref<L.CircleMarker | null>(null)
 
     const floors = [1, 2, 3]
     const selectedFloor = ref(1)
 
     const selectFloor = (floor: number) => {
       selectedFloor.value = floor
-      // Later: swap floor images here
+      // TODO: switch overlay if floor changes
     }
 
     onMounted(() => {
-      map.value = L.map(mapContainer.value!).setView([51.505, -0.09], 13)
+      map.value = L.map(mapContainer.value!, {
+        zoomControl: false,
+      })
+      map.value.fitBounds(bounds)
+      L.imageOverlay(mockMap, bounds).addTo(map.value)
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors',
+      map.value.createPane('userPane')
+      map.value.getPane('userPane').style.zIndex = 999
+
+      gps.init()
+      blueDot.value = L.circleMarker([centerLat, centerLng], {
+        radius: 10, // Radius of the circle
+        fillColor: '#278cea', // Fill color
+        color: '#fffbf3', // Border color
+        weight: 2, // Border width
+        opacity: 1, // Border opacity
+        fillOpacity: 1, // Fill opacity
+        pane: 'userPane',
       }).addTo(map.value)
+    })
+
+    watch([gps.lat, gps.lng], ([newLat, newLng]) => {
+      if (blueDot.value && newLat != null && newLng != null) {
+        console.log("new lat/lng: " + [newLat, newLng])
+        blueDot.value.setLatLng([newLat, newLng])
+      }
     })
 
     return {
