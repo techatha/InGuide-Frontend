@@ -1,15 +1,13 @@
 <template>
   <div class="app-container">
     <MapView />
-    <SearchBar />
-    <MenuPanel />
+    <router-view name="searchBar"></router-view>
+    <router-view name="menuPanel"></router-view>
   </div>
 </template>
 
 <script setup lang="ts">
-import SearchBar from './components/SearchBar.vue'
 import MapView from './components/MapView.vue'
-import MenuPanel from './components/MenuPanel.vue'
 </script>
 
 <style scoped>

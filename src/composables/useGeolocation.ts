@@ -5,15 +5,7 @@ const watcherId = ref<number | null>(null)
 const lat = ref<number | null>(null)
 const lng = ref<number | null>(null)
 
-// Clear the watcher when this module is unloaded (optional but clean)
-onUnmounted(() => {
-  stopGPS()
-})
-
-export {
-    lat,
-    lng
-}
+export { lat, lng }
 
 export function init() {
   // Start watching position once (shared by whole app/module)
@@ -30,6 +22,10 @@ export function init() {
       timeout: 5000,
     },
   )
+  // Clear the watcher when this module is unloaded (optional but clean)
+  onUnmounted(() => {
+    stopGPS()
+  })
 }
 
 export function stopGPS() {
