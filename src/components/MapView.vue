@@ -9,7 +9,7 @@
         :key="floor"
         class="floor"
         :class="{ selected: floor === selectedFloor }"
-        @click="selectFloor(floor)"
+        @click="initPosition()"
       >
         F{{ floor }}
       </div>
@@ -20,9 +20,8 @@
 <script lang="ts">
 import { defineComponent, ref, onMounted } from 'vue'
 import 'leaflet/dist/leaflet.css'
-import * as gps from '@/composables/useGeolocation'
 import * as map from '@/composables/useMap'
-import { watch } from 'vue'
+import * as position from '@/composables/usePositioningSystem'
 
 export default defineComponent({
   setup() {
@@ -44,24 +43,27 @@ export default defineComponent({
       // TODO: switch overlay if floor changes
     }
     onMounted(() => {
-      gps.init()
       map.init(mapContainer.value as HTMLElement)
       map.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
       map.setWalkablePath()
-
-      watch([gps.lat, gps.lng], ([newLat, newLng]) => {
-        if (newLat != null && newLng != null) {
-          console.log('new lat/lng: ' + [newLat, newLng])
-          map.setUserPosition([newLat, newLng])
-        }
-      })
     })
+
+    const initPosition = () => {
+      position.init()
+      setInterval(() => {
+        map.setUserPosition(position.getPosition())
+      }, 1000)
+      setInterval(() => {
+        console.log(position.getPrediction());
+      }, 500)
+    }
 
     return {
       mapContainer,
       floors,
       selectedFloor,
       selectFloor,
+      initPosition
     }
   },
 })

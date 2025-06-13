@@ -15,8 +15,8 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     https: {
-      key: fs.readFileSync('./localhost+3-key.pem'),
-      cert: fs.readFileSync('./localhost+3.pem')
+      key: fs.readFileSync('./localhost+4-key.pem'),
+      cert: fs.readFileSync('./localhost+4.pem')
     }
   },
   resolve: {

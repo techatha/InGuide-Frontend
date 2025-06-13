@@ -2,10 +2,8 @@ import { ref, onUnmounted } from 'vue'
 
 const watcherId = ref<number | null>(null)
 
-const lat = ref<number | null>(null)
-const lng = ref<number | null>(null)
-
-export { lat, lng }
+export const lat = ref<number | null>(null)
+export const lng = ref<number | null>(null)
 
 export function init() {
   // Start watching position once (shared by whole app/module)
