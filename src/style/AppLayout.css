@@ -1,0 +1,12 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--color-light, #f8f8f8);
+}
+
+.side-panel {
+  width: 70px;
+  padding: 1rem 0 1rem 1rem;
+}
+

@@ -1,23 +1,26 @@
 <template>
   <div class="search-bar">
-    Search Bar
+    <input 
+    type="text"
+    v-model="query"
+    placeholder="Search"
+    class="search-input"
+    >
+    <button class="search-button" @click="handleSearch">
+      <font-awesome-icon icon="search"/>
+    </button>
   </div>
 </template>
 
-<style scoped>
-.search-bar {
-  position: fixed;
-  top: 8vh;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90%;
-  height: 40px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  border-radius: 10px;
-  text-align: center;
-  line-height: 40px;
-  font-weight: bold;
-  z-index: 10;
-}
-</style>
+<script lang="ts">
+import { defineComponent, ref } from 'vue'
+
+export default defineComponent({
+  setup() {
+    const query = ref('')
+    return { query }
+  }
+})
+</script>
+
+<style src="../style/SearchBar.css"></style>
