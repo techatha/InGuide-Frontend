@@ -1,0 +1,33 @@
+.map-view {
+  background-color: #FEFBF6;
+  height: 100%;
+}
+
+#map {
+  z-index: 0;
+  height: calc(100%);
+  background-color: #FEFBF6;
+}
+
+.floor-list {
+  z-index: 10;
+  background-color: #FFF;
+  border-radius: 10px;
+  border: 1px solid;
+  position: absolute;
+  bottom: 20vh;
+  left: 20px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 5px;
+}
+
+.floor {
+  padding: 15px 20px;
+  border-radius: 5px;
+}
+
+.floor.selected {
+  background-color: #A3C4A8;
+  border-radius: 10px;
+}

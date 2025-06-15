@@ -69,35 +69,4 @@ export default defineComponent({
 })
 </script>
 
-<style scoped>
-.map-view {
-  background-color: #fff3a0;
-  height: 100%;
-}
-
-#map {
-  z-index: 0;
-  height: calc(100%);
-  background-color: #fff3a0;
-}
-
-.floor-list {
-  z-index: 10;
-  background-color: gainsboro;
-  border-radius: 5px;
-  position: absolute;
-  bottom: 20vh;
-  left: 20px;
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 5px;
-}
-
-.floor {
-  padding: 15px 20px;
-  border-radius: 5px;
-}
-.floor.selected {
-  background-color: #add8e6;
-}
-</style>
+<style src="../style/MapView.css"></style>
