@@ -1,13 +1,15 @@
 <template>
     <div class="poi-card">
-        <div class="poi-content">
-            <img :src="poi.image" class="poi-img" alt="POI" />
-            <div class="poi-details">
+        <img :src="poi.image" class="poi-img" alt="POI" />
+        <div class="poi-info">
+            <div class="poi-text">
                 <div class="poi-name">{{ poi.name }}</div>
                 <div class="poi-type">{{ poi.type }}</div>
             </div>
+            <div class="poi-button">
+                <button class="detail-btn" @click="$emit('view-detail', poi)">View Detail</button>
+            </div>
         </div>
-        <button class="detail-btn">View Detail</button>
     </div>
 </template>
 

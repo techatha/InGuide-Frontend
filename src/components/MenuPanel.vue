@@ -9,14 +9,16 @@
     <div class="drag-bar"></div>
     <div class="expandable-content" v-if="isExpanded">
       <p>Swipe Panel Content goes here...</p>
-      <div class="panel-section">
-        <h3 class="panel-title">Recommended Place</h3>
+      <div class="panel-content">
+        <div class="">
+          <h3 class="panel-title">Recommended Place</h3>
           <PoiCard
           v-for="poi in recommendedPOIs"
           :key="poi.id"
           :poi="poi"
           @view-detail="handleViewDetail"
           />
+        </div>
       </div>
     </div>
   </div>
