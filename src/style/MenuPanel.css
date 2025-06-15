@@ -19,9 +19,15 @@
 }
 
 .drag-bar {
-  width: 60px;
+  width: 100px;
   height: 5px;
   background-color: #9F9F9F;
   border-radius: 3px;
   margin: 0 auto 10px;
+}
+
+.panel-title {
+  font-weight: 500;
+  font-size: 20px;
+  margin: 30px 0 20px 15px;
 }
