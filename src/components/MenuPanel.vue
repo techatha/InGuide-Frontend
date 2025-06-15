@@ -9,72 +9,49 @@
     <div class="drag-bar"></div>
     <div class="expandable-content" v-if="isExpanded">
       <p>Swipe Panel Content goes here...</p>
+      <div class="panel-section">
+        <h3 class="panel-title">Recommended Place</h3>
+          <PoiCard
+          v-for="poi in recommendedPOIs"
+          :key="poi.id"
+          :poi="poi"
+          @view-detail="handleViewDetail"
+          />
+      </div>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import PoiCard from './PoiCard.vue'
+import PoiService, { type POI } from '@/services/PoiService'
 
-export default defineComponent({
-  name: 'ExpandableSearch',
-  data() {
-    return {
-      isExpanded: false,
-      startY: 0,
-      currentY: 0,
-    }
-  },
-  methods: {
-    handleTouchStart(e: TouchEvent) {
-      this.startY = e.touches[0].clientY
-    },
-    handleTouchMove(e: TouchEvent) {
-      this.currentY = e.touches[0].clientY
-      const deltaY = this.startY - this.currentY
+const isExpanded = ref(true)
+const startY = ref(0)
+const currentY = ref(0)
+const recommendedPOIs = ref<POI[]>([])
 
-      // Only trigger expansion if swiping upward
-      if (deltaY > 30 && !this.isExpanded) {
-        this.isExpanded = true
-      } else if (deltaY < -30 && this.isExpanded) {
-        this.isExpanded = false
-      }
-    },
-    handleTouchEnd() {
-      // Reset touch positions
-      this.startY = 0
-      this.currentY = 0
-    },
-  },
+onMounted(async () => {
+  recommendedPOIs.value = await PoiService.getRecommendedPOIs()
 })
+
+const handleTouchStart = (e: TouchEvent) => {
+  startY.value = e.touches[0].clientY
+}
+const handleTouchMove = (e: TouchEvent) => {
+  currentY.value = e.touches[0].clientY
+  const deltaY = startY.value - currentY.value
+  if (deltaY > 30 && !isExpanded.value) isExpanded.value = true
+  else if (deltaY < -30 && isExpanded.value) isExpanded.value = false
+}
+const handleTouchEnd = () => {
+  startY.value = 0
+  currentY.value = 0
+}
+const handleViewDetail = (poi: POI) => {
+  console.log('View Detail for:', poi.name)
+}
 </script>
 
-<style scoped>
-.panel {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 5vh;
-  background-color: #ffc0cb;
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  transition: all 0.3s ease;
-  overflow: hidden;
-  z-index: 9999;
-}
-
-.panel.expand {
-  height: 85vh;
-}
-
-.drag-bar {
-  width: 60px;
-  height: 5px;
-  background-color: #333;
-  border-radius: 3px;
-  margin: 0 auto 10px;
-}
-</style>
+<style src="../style/MenuPanel.css"></style>
