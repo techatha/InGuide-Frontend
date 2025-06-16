@@ -1,4 +1,4 @@
-export interface Prediction {
+export interface Data {
   timestamp: number
   acc_x: number;
   acc_y: number;
@@ -15,10 +15,17 @@ export interface Prediction {
 
 export interface PredictionPayload {
   interval: number;
-  data: Prediction[];
+  data: Data[];
+}
+
+export interface Probability {
+  Halt: number;
+  Forward: number;
+  Turn: number;
 }
 
 export interface PredictionResponse {
   action: string;
   prediction: number;
+  probability: Probability;
 }

@@ -1,4 +1,4 @@
-interface Acceleration {
+export interface Acceleration {
   x: number | null;
   y: number | null;
   z: number | null;

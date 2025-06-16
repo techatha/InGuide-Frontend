@@ -26,13 +26,19 @@ import * as position from '@/composables/usePositioningSystem'
 export default defineComponent({
   setup() {
     // this is setup for test
-    const centerLat = 18.755652251965408
-    const centerLng = 99.03422248332312
-    const delta = 0.0001 // ~11 meters
+    // CAMT Building location
     const bounds = [
-      [centerLat - delta, centerLng - 2 * delta], // Southwest corner
-      [centerLat + delta, centerLng + 2 * delta], // Northeast corner
+      [18.799746109280246, 98.9510136873636], // Southwest corner
+      [18.799218782363702, 98.95060525876119], // Northeast corner
     ]
+    // const centerLat = 18.755652251965408
+    // const centerLng = 99.03422248332312
+    // const delta = 0.0001 // ~11 meters
+    // const bounds = [
+    //   [centerLat - delta, centerLng - 2 * delta], // Southwest corner
+    //   [centerLat + delta, centerLng + 2 * delta], // Northeast corner
+    // ]
+
 
     const mapContainer = ref<HTMLElement | null>(null)
     const floors = [1, 2, 3]
@@ -54,8 +60,8 @@ export default defineComponent({
         map.setUserPosition(position.getPosition())
       }, 1000)
       setInterval(() => {
-        console.log(position.getPrediction());
-      }, 500)
+        console.log(position.getPredictionResult());
+      }, 2000)
     }
 
     return {
@@ -69,35 +75,4 @@ export default defineComponent({
 })
 </script>
 
-<style scoped>
-.map-view {
-  background-color: #fff3a0;
-  height: 100%;
-}
-
-#map {
-  z-index: 0;
-  height: calc(100%);
-  background-color: #fff3a0;
-}
-
-.floor-list {
-  z-index: 10;
-  background-color: gainsboro;
-  border-radius: 5px;
-  position: absolute;
-  bottom: 20vh;
-  left: 20px;
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 5px;
-}
-
-.floor {
-  padding: 15px 20px;
-  border-radius: 5px;
-}
-.floor.selected {
-  background-color: #add8e6;
-}
-</style>
+<style src="../style/MapView.css"></style>
