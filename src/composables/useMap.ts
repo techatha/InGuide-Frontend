@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import mockMap from '@/assets/MockMap.svg'
+import mockMap from '@/assets/InGuide/F3_floor_plan.svg'
 
 export const map = ref<L.Map | null>(null)
 const userPosition = L.circleMarker([0, 0], {
