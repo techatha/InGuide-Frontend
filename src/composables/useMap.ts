@@ -40,6 +40,10 @@ export function setMapBound(sw: [number, number], ne: [number, number]) {
   map.value?.setView(sw)
 }
 
+export function setMapOverlay(filepath: string) {
+  _mapImageOverlay?.setUrl(filepath)
+}
+
 export function setUserPosition(newLatLng: [number, number]) {
   userPosition.setLatLng(newLatLng)
 }
