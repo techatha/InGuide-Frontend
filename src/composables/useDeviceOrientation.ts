@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ref } from 'vue'
 
-const permission = ref<string | null>(null);
+export const permission = ref<string | null>(null);
 export const currentHeading = ref<number | null>(null);
 
 export async function requestPermission(): Promise<void> {

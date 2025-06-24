@@ -68,8 +68,8 @@ export function getLatLng(): [number, number] {
 }
 
 function latLngToENU(lat: number, lng: number): [number, number] {
-  const dLat = (lat - (lat0.value as number)) * Math.PI
-  const dLng = (lng - (lng0.value as number)) * Math.PI
+  const dLat = (lat - (lat0.value as number)) * (Math.PI / 180)
+  const dLng = (lng - (lng0.value as number)) * (Math.PI / 180)
   const nort = dLat * EARTH_RADIUS
   const east = dLng * EARTH_RADIUS * Math.cos(((lat0.value as number) * Math.PI) / 180)
   return [east, nort]

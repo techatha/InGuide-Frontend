@@ -1,6 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 
-const watcherId = ref<number | null>(null)
+export const watcherId = ref<number | null>(null)
 
 export const lat = ref<number | null>(null)
 export const lng = ref<number | null>(null)
@@ -30,5 +30,7 @@ export function stopGPS() {
   if (watcherId.value !== null) {
     navigator.geolocation.clearWatch(watcherId.value)
     watcherId.value = null
+    lat.value = null
+    lng.value = null
   }
 }

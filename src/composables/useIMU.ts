@@ -2,8 +2,8 @@
 import { ref } from 'vue'
 import type { IMUData } from '@/types/IMU'
 
-const permission = ref<string | null>(null);
-const interval = ref<number | null>(null);
+export const permission = ref<string | null>(null);
+export const interval = ref<number | null>(null);
 export const currentIMUReading = ref<IMUData | null>(null);
 
 export async function requestPermission(): Promise<void> {

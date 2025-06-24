@@ -7,6 +7,9 @@ import * as kf from '@/composables/useKalmanFilter'
 import type { Acceleration, IMUData } from '@/types/IMU'
 import type { Data, PredictionPayload, PredictionResponse, Probability } from '@/types/prediction'
 import { submitPayload } from '@/services/predictionService'
+import { create, all } from 'mathjs'
+
+const math = create(all)
 
 const latestGPSLat = ref<number | null>(null);
 const latestGPSLng = ref<number | null>(null);
@@ -23,6 +26,8 @@ let dataInterval: number;
 export function init(interval: number = 500, window: number = 2000, predictInterval: number = 1000) {
   gps.init()
   imu.requestPermission()
+  orien.requestPermission()
+
   windowSize = window;
   dataInterval = interval;
 
@@ -110,5 +115,43 @@ function pushDataIntoWindowFame() {
   windowData.value.push(data)
   if (windowData.value.length > dataSize) {
     windowData.value.shift()
+  }
+}
+
+// world-frame transform function
+export function rotateToWorldFrame(acc: { x: number, y: number, z: number }, rotation: { alpha: number, beta: number, gamma: number }) {
+  // alpha = yaw (rotationRate.alpha)
+  // beta = pitch (rotationRate.beta)
+  // gamma = roll (rotationRate.gamma)
+
+  const yaw = rotation.alpha * Math.PI / 180
+  const pitch = rotation.beta * Math.PI / 180
+  const roll = rotation.gamma * Math.PI / 180
+
+  // Rotation order: ZYX (yaw → pitch → roll)
+  const Rz = math.matrix([
+    [Math.cos(yaw), -Math.sin(yaw), 0],
+    [Math.sin(yaw),  Math.cos(yaw), 0],
+    [0, 0, 1]
+  ])
+  const Ry = math.matrix([
+    [Math.cos(pitch), 0, Math.sin(pitch)],
+    [0, 1, 0],
+    [-Math.sin(pitch), 0, Math.cos(pitch)]
+  ])
+  const Rx = math.matrix([
+    [1, 0, 0],
+    [0, Math.cos(roll), -Math.sin(roll)],
+    [0, Math.sin(roll), Math.cos(roll)]
+  ])
+
+  const rotationMatrix = math.multiply(Rz, Ry, Rx)
+  const accVec = math.matrix([[acc.x], [acc.y], [acc.z]])
+
+  const worldVec = math.multiply(rotationMatrix, accVec)
+  return {
+    x: worldVec.get([0, 0]),
+    y: worldVec.get([1, 0]),
+    z: worldVec.get([2, 0])
   }
 }
