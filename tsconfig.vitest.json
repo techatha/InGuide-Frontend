@@ -1,0 +1,22 @@
+// tsconfig.vitest.json
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tsbuildinfo/tsconfig.vitest.json.tsbuildinfo",
+    "lib": ["esnext", "dom"],
+    // CRITICAL CHANGE: Remove "vitest/import" from here.
+    "types": ["node", "vitest/globals"] // <--- THIS IS THE UPDATED LINE
+  },
+  "include": [
+    "tests/**/*.ts",
+    "tests/**/*.d.ts",
+    "tests/**/*.tsx",
+    "tests/**/*.vue",
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+    "types/**/*.d.ts",
+    "src/**/*.ts",
+  ],
+  "exclude": ["node_modules", "dist"]
+}
