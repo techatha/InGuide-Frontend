@@ -26,13 +26,19 @@ import * as position from '@/composables/usePositioningSystem'
 export default defineComponent({
   setup() {
     // this is setup for test
-    const centerLat = 18.755652251965408
-    const centerLng = 99.03422248332312
-    const delta = 0.0001 // ~11 meters
+    // CAMT Building location
     const bounds = [
-      [centerLat - delta, centerLng - 2 * delta], // Southwest corner
-      [centerLat + delta, centerLng + 2 * delta], // Northeast corner
+      [18.79906410129504, 98.9509106146564], // Southwest corner
+      [18.799713191759746, 98.95066538453513], // Northeast corner
     ]
+    // const centerLat = 18.755652251965408
+    // const centerLng = 99.03422248332312
+    // const delta = 0.0001 // ~11 meters
+    // const bounds = [
+    //   [centerLat - delta, centerLng - 2 * delta], // Southwest corner
+    //   [centerLat + delta, centerLng + 2 * delta], // Northeast corner
+    // ]
+
 
     const mapContainer = ref<HTMLElement | null>(null)
     const floors = [1, 2, 3]
@@ -51,11 +57,13 @@ export default defineComponent({
     const initPosition = () => {
       position.init()
       setInterval(() => {
+        console.log(position.getPredictionResult())
+        console.log(position.getPosition())
         map.setUserPosition(position.getPosition())
       }, 1000)
       setInterval(() => {
-        console.log(position.getPrediction());
-      }, 500)
+        // console.log(position.getPredictionResult());
+      }, 2000)
     }
 
     return {

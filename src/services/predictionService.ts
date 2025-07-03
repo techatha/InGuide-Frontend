@@ -16,9 +16,9 @@ const httpClient = axios.create({
  */
 export async function submitPayload(payload: PredictionPayload) {
   try {
-    console.log("service :", payload);
+    // console.log("service :", payload);
     const response = await httpClient.post<PredictionResponse>('/predictMovement', payload)
-    console.log('backend response :', response.data)
+    // console.log('backend response :', response.data)
     return response.data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {

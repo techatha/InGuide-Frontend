@@ -47,7 +47,7 @@ const createMockDeviceMotionEvent = (data: typeof TD_02): DeviceMotionEvent => {
 }
 
 // Test suite for useGeolocation
-describe('UTC-02: Test-useIMU', () => {
+describe('Unit tests on useIMU.ts', () => {
   beforeEach(() => {
     // Reset state
     permission.value = null
@@ -88,13 +88,13 @@ describe('UTC-02: Test-useIMU', () => {
     vi.clearAllMocks()
   })
 
-  it('TC-01: Test if request IMU can be granted', async () => {
+  it('UTC-02.01: useIMU.requestPermission() TC-01', async () => {
     await requestPermission()
     expect(permission.value).toBe(TD_01)
     expect(mockRequestPermission).toHaveBeenCalledTimes(1)
   })
 
-  it('TC-02: GPS coordinate are updates correctly', async () => {
+  it('UTC-02.02: useIMU.getIMUData() TC-01', async () => {
     await requestPermission()
     if (capturedDevicemotionCallback) {
       const mockEvent = createMockDeviceMotionEvent(TD_02)

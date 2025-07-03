@@ -35,7 +35,7 @@ const mockGeolocation = {
 }
 
 // Test suite for useGeolocation
-describe('UTC-01: Test-useGeolocation', () => {
+describe('Unit tests on useGeolocation.ts', () => {
   beforeEach(() => {
     lat.value = null
     lng.value = null
@@ -57,14 +57,14 @@ describe('UTC-01: Test-useGeolocation', () => {
     vi.clearAllMocks()
   })
 
-  it('TC-01: should initialize geolocation tracking and set watcher ID', () => {
+  it('UTC-01.01: useGeolocation.init() TC-01', () => {
     init()
     expect(watcherId.value).toBe(MOCKED_WATCH_ID)
     expect(mockGeolocation.watchPosition).toHaveBeenCalledTimes(1)
     expect(mockGeolocation.clearWatch).not.toHaveBeenCalled()
   })
 
-  it('TC-02: GPS coordinate are updates correctly', async () => {
+  it('UTC-01.02: useGeolocation.lat TC-01', async () => {
     init();
     expect(watcherId.value).toBe(MOCKED_WATCH_ID);
     expect(mockWatchPositionSuccessCallback).toBeDefined();
@@ -75,10 +75,22 @@ describe('UTC-01: Test-useGeolocation', () => {
     }
     await nextTick()
     expect(lat.value).toBe(TD_01.coords.latitude);
+  });
+
+  it('UTC-01.03: useGeolocation.lng TC-01', async () => {
+    init();
+    expect(watcherId.value).toBe(MOCKED_WATCH_ID);
+    expect(mockWatchPositionSuccessCallback).toBeDefined();
+    if (mockWatchPositionSuccessCallback) {
+      mockWatchPositionSuccessCallback(TD_01 as GeolocationPosition);
+    } else {
+      throw new Error('watchPosition success callback not set in mock.');
+    }
+    await nextTick()
     expect(lng.value).toBe(TD_01.coords.longitude);
   });
 
-  it('TC-03: should clear watcherId and reset coordinates when tracking is stopped', async () => {
+  it('UTC-01.04: useGeolocation.stopGPS() TC-01', async () => {
     init();
     if (mockWatchPositionSuccessCallback) {
       mockWatchPositionSuccessCallback(TD_01 as GeolocationPosition);

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import * as kf from '@/composables/useKalmanFilter'
 
-describe('UTC-04: useKalmanFilter', () => {
+describe('Unit tests on useKalmanFilter.ts', () => {
   const TD_01 = { initLat: 18.9, initLng: 96.8, heading: 0 }
   const TD_02 = {
     mode: 0,
@@ -15,14 +15,14 @@ describe('UTC-04: useKalmanFilter', () => {
     kf.init(TD_01.initLat, TD_01.initLng, TD_01.heading)
   })
 
-  it('TC-01: should initialize Kalman Filter', () => {
+  it('UTC-04.01: Test-useKalmanFilter.init() TC-01', () => {
     expect(kf.isInitialized()).toBe(true)
     const [lat, lng] = kf.getLatLng()
     expect(lat).toBeCloseTo(TD_01.initLat, 6)
     expect(lng).toBeCloseTo(TD_01.initLng, 6)
   })
 
-  it('TC-02: should predict next position with slight movement forward', () => {
+  it('UTC-04.02: Test-useKalmanFilter.predict() TC-01', () => {
     kf.predict(TD_02.mode, TD_02.acc, TD_02.dt, TD_02.prob)
     const [lat, lng] = kf.getLatLng()
     expect(lat).toBeGreaterThanOrEqual(TD_01.initLat)
@@ -30,7 +30,7 @@ describe('UTC-04: useKalmanFilter', () => {
     expect(lng).toBeCloseTo(TD_01.initLng, 6)
   })
 
-  it('TC-03: should update position closer to measured [18, 96]', () => {
+  it('UTC-04.03: Test-useKalmanFilter.update() TC-01', () => {
     kf.update(TD_03.lat, TD_03.lng)
     const [lat, lng] = kf.getLatLng()
     expect(lat).toBeGreaterThan(TD_03.lat)

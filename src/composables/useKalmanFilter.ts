@@ -14,7 +14,7 @@ export const state = ref<number | null>(null)
 const kf = ref<ExtendedKalmanFilter | null>(null)
 const Q = ref<math.Matrix | null>(null)
 
-export function init(initLat: number, initLng: number, orien: number, processNoise: number = 0.01) {
+export function init(initLat: number, initLng: number, orien: number, processNoise: number = 0.025) {
   lat0.value = initLat
   lng0.value = initLng
   kf.value = new ExtendedKalmanFilter(latLngToENU(initLat, initLng), orien)
@@ -39,7 +39,11 @@ export function predict(mode: number, acc: Acceleration, dt: number, prob: Proba
   let result: any
   switch (mode) {
     case 1:
-      result = predictForward(east_n0, nort_n0, velo_n0, head_n0, a, dt)
+      let kick_boost_acc = velo_n0
+      if (mode === 1 && velo_n0 < 0.1) {
+        kick_boost_acc = 0.5
+      }
+      result = predictForward(east_n0, nort_n0, kick_boost_acc, head_n0, a, dt)
       break
     case 2:
       result = predictTurn(east_n0, nort_n0, velo_n0, head_n0, a, dt)
@@ -68,8 +72,8 @@ export function getLatLng(): [number, number] {
 }
 
 function latLngToENU(lat: number, lng: number): [number, number] {
-  const dLat = (lat - (lat0.value as number)) * (Math.PI / 180)
-  const dLng = (lng - (lng0.value as number)) * (Math.PI / 180)
+  const dLat = (lat - (lat0.value as number)) * Math.PI
+  const dLng = (lng - (lng0.value as number)) * Math.PI
   const nort = dLat * EARTH_RADIUS
   const east = dLng * EARTH_RADIUS * Math.cos(((lat0.value as number) * Math.PI) / 180)
   return [east, nort]

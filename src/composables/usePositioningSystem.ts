@@ -37,7 +37,7 @@ export function init(interval: number = 500, window: number = 2000, predictInter
       // console.log('new lat/lng: ', [lat, lng]);
       latestGPSLat.value = lat
       latestGPSLng.value = lng
-      if (!kf.isInitialized()) {
+      if (!kf.isInitialized() && orien.isAvailable() && latestGPSLat.value != null && latestGPSLng.value != null) {
         kf.init(lat, lng, orien.getCurrentHeading());
       }
       kf.update(lat, lng)
@@ -87,6 +87,7 @@ async function getPrediction() {
 }
 
 export function getPredictionResult() {
+  console.log(latestPrediction.value)
   return latestPrediction.value;
 }
 

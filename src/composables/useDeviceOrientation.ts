@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ref } from 'vue'
 
@@ -32,4 +33,11 @@ function setupDeviceOrienListener() {
   window.addEventListener('deviceorientation', (event) => {
     currentHeading.value = event.alpha;
   })
+}
+
+export function isAvailable(): boolean {
+  if(currentHeading.value != null){
+    return true
+  }
+  return false
 }

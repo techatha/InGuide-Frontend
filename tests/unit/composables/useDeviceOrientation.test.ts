@@ -41,7 +41,7 @@ const createMockDeviceOrientationEvent = (alpha: number, beta: number, gamma: nu
 }
 
 // Test suite for useGeolocation
-describe('UTC-03: Test-useDeviceOrientation', () => {
+describe('Unit tests on useDeviceOrientation.ts', () => {
   beforeEach(() => {
     // Reset state
     permission.value = null
@@ -79,13 +79,13 @@ describe('UTC-03: Test-useDeviceOrientation', () => {
     vi.clearAllMocks()
   })
 
-  it('TC-01: Test if request IMU can be granted', async () => {
+  it('UTC-03.01: useDeviceOrientation.requestPermission() TC-01', async () => {
     await requestPermission()
     expect(permission.value).toBe(TD_01)
     expect(mockRequestPermission).toHaveBeenCalledTimes(1)
   })
 
-  it('TC-02: GPS coordinate are updates correctly', async () => {
+  it('UTC-03.02: Test-useDeviceOrientation.getCurrentHeading() TC-01', async () => {
     await requestPermission()
     if (capturedDeviceorienCallback) {
       const mockEvent = createMockDeviceOrientationEvent(TD_02, 0, 0)
