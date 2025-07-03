@@ -29,7 +29,7 @@ import { ref, onMounted } from 'vue'
 import PoiCard from './PoiCard.vue'
 import PoiService, { type POI } from '@/services/PoiService'
 
-const isExpanded = ref(true)
+const isExpanded = ref(false)
 const startY = ref(0)
 const currentY = ref(0)
 const recommendedPOIs = ref<POI[]>([])

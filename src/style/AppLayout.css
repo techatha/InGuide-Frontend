@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: var(--color-light, #f8f8f8);
+  background-color: var(--color-light, #fefaf6);
 }
 
 .side-panel {

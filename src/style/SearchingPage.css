@@ -1,0 +1,59 @@
+.search-page {
+  padding: 1rem;
+  background-color: #fefaf6;
+}
+
+.search-bar-wrapper {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.search-icon {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #c4c4c4;
+  font-size: 1.2rem;
+}
+
+.nearby-section h2,
+.recommended-section h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #111827;
+}
+
+.tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.tag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  color: white;
+}
+
+.restroom {
+  background-color: #b49b47;
+}
+.lecture {
+  background-color: #5473b9;
+}
+.general {
+  background-color: #618ea5;
+}
+.lab {
+  background-color: #9b87d4;
+}
+.advance {
+  background-color: #939d93;
+}
