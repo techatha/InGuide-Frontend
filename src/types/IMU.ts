@@ -4,7 +4,7 @@ export interface Acceleration {
   z: number | null;
 }
 
-interface RotationRate {
+export interface RotationRate {
   alpha: number | null;
   beta: number | null;
   gamma: number | null;

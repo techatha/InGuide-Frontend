@@ -28,9 +28,11 @@ export default defineComponent({
     // this is setup for test
     // CAMT Building location
     const bounds = [
-      [18.79906410129504, 98.9509106146564], // Southwest corner
-      [18.799713191759746, 98.95066538453513], // Northeast corner
+      [18.799062936888000, 98.95031809046690], // South-West corner
+      [18.799771920915920, 98.95093944127089], // North-East corner
     ]
+
+    //
     // const centerLat = 18.755652251965408
     // const centerLng = 99.03422248332312
     // const delta = 0.0001 // ~11 meters
@@ -39,10 +41,9 @@ export default defineComponent({
     //   [centerLat + delta, centerLng + 2 * delta], // Northeast corner
     // ]
 
-
     const mapContainer = ref<HTMLElement | null>(null)
     const floors = [1, 2, 3]
-    const selectedFloor = ref(1)
+    const selectedFloor = ref(3)
 
     const selectFloor = (floor: number) => {
       selectedFloor.value = floor
@@ -71,7 +72,7 @@ export default defineComponent({
       floors,
       selectedFloor,
       selectFloor,
-      initPosition
+      initPosition,
     }
   },
 })

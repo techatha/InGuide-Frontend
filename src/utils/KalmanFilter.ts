@@ -12,10 +12,11 @@ export class ExtendedKalmanFilter {
     this.x = math.matrix([[initialPosition[0]], [initialPosition[1]], [0], [orien]])
     this.P = math.identity(4) as math.Matrix
     this.H = math.matrix([
-      [1, 0, 0, 0],
-      [0, 1, 0, 0],
+      [1, 0, 0, 0], // measure east
+      [0, 1, 0, 0], // measure north
+      [0, 0, 0, 1], // measure heading
     ])
-    this.R = math.multiply(math.identity(2), 0.0001) as math.Matrix
+    this.R = math.multiply(math.identity(3), 0.0001) as math.Matrix // measurement noise for [east, north, heading]
     this.I = math.identity(4) as math.Matrix
   }
 

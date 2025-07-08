@@ -18,14 +18,14 @@ export function init(initLat: number, initLng: number, orien: number, processNoi
   lat0.value = initLat
   lng0.value = initLng
   kf.value = new ExtendedKalmanFilter(latLngToENU(initLat, initLng), orien)
-  Q.value = math.multiply(math.identity(4), processNoise) as math.Matrix // need to blend if not work
+  Q.value = math.multiply(math.identity(4), processNoise) as math.Matrix
 }
 
 export function isInitialized(): boolean {
   return kf.value !== null
 }
 
-export function predict(mode: number, acc: Acceleration, dt: number, prob: Probability) {
+export function predict(mode: number, acc: Acceleration, dt: number, prob: Probability, gyroYawRateRad: number) {
   const x_n0 = kf.value?.x as math.Matrix
   const east_n0 = x_n0.get([0, 0])
   const nort_n0 = x_n0.get([1, 0])
@@ -40,8 +40,8 @@ export function predict(mode: number, acc: Acceleration, dt: number, prob: Proba
   switch (mode) {
     case 1:
       let kick_boost_acc = velo_n0
-      if (mode === 1 && velo_n0 < 0.1) {
-        kick_boost_acc = 0.5
+      if (velo_n0 < 0.5) {
+        kick_boost_acc = 0.7
       }
       result = predictForward(east_n0, nort_n0, kick_boost_acc, head_n0, a, dt)
       break
@@ -52,18 +52,20 @@ export function predict(mode: number, acc: Acceleration, dt: number, prob: Proba
       result = predictHalt(east_n0, nort_n0)
       break
   }
-  let head_n1 = (head_n0 + acc_z * dt) % (2 * Math.PI)
+  let head_n1 = (head_n0 + gyroYawRateRad * dt) % (2 * Math.PI)
   if (head_n1 < 0) head_n1 += 2 * Math.PI
   const x = math.matrix([[result.e], [result.n], [result.v], [head_n1]])
   const F = blendF(velo_n0, head_n0, dt, prob)
-  kf.value?.predict(x, F, Q.value as math.Matrix)
+  const Q_blend = blendQ(prob)
+  kf.value?.predict(x, F, Q_blend)
 }
 
-export function update(lat: number, lng: number){
+export function update(lat: number, lng: number, heading: number) {
   const [e, n] = latLngToENU(lat, lng)
-  const z = math.matrix([[e], [n]])
+  const z = math.matrix([[e], [n], [heading]])
   kf.value?.update(z)
 }
+
 
 export function getLatLng(): [number, number] {
   const result = kf.value?.getState() as [number, number]
@@ -97,6 +99,19 @@ function blendF(v: number, yaw: number, dt: number, prob: Probability) {
     math.multiply(FHalt, prob.Halt)
   )
 }
+
+function blendQ(prob: Probability): math.Matrix {
+  const QForward = math.diag([0.4, 0.4, 0.1, 0.25])
+  const QTurn = math.diag([0.5, 0.5, 0.5, 0.3])
+  const QHalt = math.diag([0.005, 0.005, 0.005, 0.05])
+
+  return math.add(
+    math.multiply(QForward, prob.Forward),
+    math.multiply(QTurn, prob.Turn),
+    math.multiply(QHalt, prob.Halt)
+  )
+}
+
 
 function predictForward(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {
   const east_n1 = e + v * Math.sin(yaw) * dt

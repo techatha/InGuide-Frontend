@@ -1,9 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ref } from 'vue'
 
 export const permission = ref<string | null>(null);
 export const currentHeading = ref<number | null>(null);
+export const alpha = ref<number | null>(null); // yaw
+export const beta = ref<number | null>(null);  // pitch
+export const gamma = ref<number | null>(null); // roll
 
 export async function requestPermission(): Promise<void> {
   if (
@@ -31,6 +33,9 @@ export function getCurrentHeading(): number {
 
 function setupDeviceOrienListener() {
   window.addEventListener('deviceorientation', (event) => {
+    alpha.value = event.alpha;
+    beta.value = event.beta;
+    gamma.value = event.gamma;
     currentHeading.value = event.alpha;
   })
 }
