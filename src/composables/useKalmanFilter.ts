@@ -14,18 +14,33 @@ export const state = ref<number | null>(null)
 const kf = ref<ExtendedKalmanFilter | null>(null)
 const Q = ref<math.Matrix | null>(null)
 
-export function init(initLat: number, initLng: number, orien: number, processNoise: number = 0.025) {
+export function init(
+  initLat: number,
+  initLng: number,
+  orien: number,
+  processNoise: number = 0.025,
+): boolean {
   lat0.value = initLat
   lng0.value = initLng
   kf.value = new ExtendedKalmanFilter(latLngToENU(initLat, initLng), orien)
   Q.value = math.multiply(math.identity(4), processNoise) as math.Matrix
+  if (kf.value == null) {
+    return false
+  }
+  return true
 }
 
 export function isInitialized(): boolean {
   return kf.value !== null
 }
 
-export function predict(mode: number, acc: Acceleration, dt: number, prob: Probability, gyroYawRateRad: number) {
+export function predict(
+  mode: number,
+  acc: Acceleration,
+  dt: number,
+  prob: Probability,
+  gyroYawRateRad: number,
+): [number, number] {
   const x_n0 = kf.value?.x as math.Matrix
   const east_n0 = x_n0.get([0, 0])
   const nort_n0 = x_n0.get([1, 0])
@@ -58,14 +73,15 @@ export function predict(mode: number, acc: Acceleration, dt: number, prob: Proba
   const F = blendF(velo_n0, head_n0, dt, prob)
   const Q_blend = blendQ(prob)
   kf.value?.predict(x, F, Q_blend)
+  return getLatLng()
 }
 
-export function update(lat: number, lng: number, heading: number) {
+export function update(lat: number, lng: number, heading: number): [number, number] {
   const [e, n] = latLngToENU(lat, lng)
   const z = math.matrix([[e], [n], [heading]])
   kf.value?.update(z)
+  return getLatLng()
 }
-
 
 export function getLatLng(): [number, number] {
   const result = kf.value?.getState() as [number, number]
@@ -74,16 +90,18 @@ export function getLatLng(): [number, number] {
 }
 
 function latLngToENU(lat: number, lng: number): [number, number] {
-  const dLat = (lat - (lat0.value as number)) * Math.PI
-  const dLng = (lng - (lng0.value as number)) * Math.PI
+  const lat0Rad = Math.cos(((lat0.value as number) * Math.PI) / 180)
+  const dLat = ((lat - (lat0.value as number)) * Math.PI) / 180
+  const dLng = ((lng - (lng0.value as number)) * Math.PI) / 180
   const nort = dLat * EARTH_RADIUS
-  const east = dLng * EARTH_RADIUS * Math.cos(((lat0.value as number) * Math.PI) / 180)
+  const east = dLng * EARTH_RADIUS * lat0Rad
   return [east, nort]
 }
 
 function ENUToLatLng(east: number, north: number): [number, number] {
+  const lat0Rad = Math.cos(((lat0.value as number) * Math.PI) / 180)
   const dLat = north / EARTH_RADIUS
-  const dLng = east / (EARTH_RADIUS * Math.cos(((lat0.value as number) * Math.PI) / 180))
+  const dLng = east / (EARTH_RADIUS * lat0Rad)
   const lat = (lat0.value as number) + (dLat * 180) / Math.PI
   const lng = (lng0.value as number) + (dLng * 180) / Math.PI
   return [lat, lng]
@@ -96,7 +114,7 @@ function blendF(v: number, yaw: number, dt: number, prob: Probability) {
   return math.add(
     math.multiply(FForward, prob.Forward),
     math.multiply(FTurn, prob.Turn),
-    math.multiply(FHalt, prob.Halt)
+    math.multiply(FHalt, prob.Halt),
   )
 }
 
@@ -108,10 +126,9 @@ function blendQ(prob: Probability): math.Matrix {
   return math.add(
     math.multiply(QForward, prob.Forward),
     math.multiply(QTurn, prob.Turn),
-    math.multiply(QHalt, prob.Halt)
+    math.multiply(QHalt, prob.Halt),
   )
 }
-
 
 function predictForward(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {
   const east_n1 = e + v * Math.sin(yaw) * dt

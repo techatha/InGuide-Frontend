@@ -58,10 +58,11 @@ describe('Unit tests on useGeolocation.ts', () => {
   })
 
   it('UTC-01.01: useGeolocation.init() TC-01', () => {
-    init()
+    const result:boolean = init()
     expect(watcherId.value).toBe(MOCKED_WATCH_ID)
     expect(mockGeolocation.watchPosition).toHaveBeenCalledTimes(1)
     expect(mockGeolocation.clearWatch).not.toHaveBeenCalled()
+    expect(result).toBe(true)
   })
 
   it('UTC-01.02: useGeolocation.lat TC-01', async () => {
@@ -98,10 +99,11 @@ describe('Unit tests on useGeolocation.ts', () => {
     await nextTick();
     expect(watcherId.value).toBe(MOCKED_WATCH_ID);
     expect(lat.value).toBeDefined();
-    stopGPS();
+    const result: boolean = stopGPS();
     expect(mockGeolocation.clearWatch).toHaveBeenCalledWith(MOCKED_WATCH_ID);
     expect(watcherId.value).toBeNull();
     expect(lat.value).toBeNull();
     expect(lng.value).toBeNull();
+    expect(result).toBe(true)
   });
 });

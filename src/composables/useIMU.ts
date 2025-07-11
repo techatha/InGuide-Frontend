@@ -6,7 +6,7 @@ export const permission = ref<string | null>(null);
 export const interval = ref<number | null>(null);
 export const currentIMUReading = ref<IMUData | null>(null);
 
-export async function requestPermission(): Promise<void> {
+export async function requestPermission(): Promise<boolean> {
   if (
     typeof DeviceMotionEvent !== 'undefined' &&
     typeof (DeviceMotionEvent as any).requestPermission === 'function'
@@ -14,12 +14,16 @@ export async function requestPermission(): Promise<void> {
     permission.value = await (DeviceMotionEvent as any).requestPermission();
     if (permission.value !== 'granted') {
       throw new Error('Permission denied for motion sensors');
+
     } else {
       setupIMUListener();
+      return true
     }
   } else if (permission.value == 'granted') {
     setupIMUListener();
+    return true
   }
+  return false
 }
 
 export function getIMUData(): IMUData | null {

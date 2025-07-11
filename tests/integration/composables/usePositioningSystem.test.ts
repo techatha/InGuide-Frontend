@@ -27,14 +27,17 @@ vi.stubGlobal('navigator', {
 // ✅ Patch `.value` of permission refs correctly
 vi.spyOn(imu, 'requestPermission').mockImplementation(async () => {
   imu.permission.value = 'granted'
+  return true
 })
 
 vi.spyOn(orientation, 'requestPermission').mockImplementation(async () => {
   orientation.permission.value = 'granted'
+  return true
 })
 
 vi.spyOn(geolocation, 'init').mockImplementation(() => {
   geolocation.watcherId.value = mockWatchId
+  return true
 })
 
 describe('ITC-05: usePositioningSystem', () => {
@@ -45,7 +48,7 @@ describe('ITC-05: usePositioningSystem', () => {
   })
 
   it('TC-01: should initialize all submodules correctly', async () => {
-    await positioning.init()
+    const result = await positioning.init()
 
     expect(geolocation.init).toHaveBeenCalled()
     expect(geolocation.watcherId.value).not.toBeNull()
@@ -55,5 +58,7 @@ describe('ITC-05: usePositioningSystem', () => {
 
     expect(orientation.requestPermission).toHaveBeenCalled()
     expect(orientation.permission.value).toBe('granted')
+
+    expect(result).toBe(true)
   })
 })

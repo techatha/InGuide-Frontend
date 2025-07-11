@@ -23,11 +23,11 @@ const windowData = ref<Data[]>([])
 let windowSize: number
 let dataInterval: number
 
-export function init(
+export async function init(
   interval: number = 500,
   window: number = 4000,
   predictInterval: number = 1000,
-) {
+): Promise<boolean> {
   gps.init()
   imu.requestPermission()
   orien.requestPermission()
@@ -85,6 +85,8 @@ export function init(
       await getPrediction()
     }, predictInterval)
   }, 500)
+
+  return true;
 }
 
 async function getPrediction() {

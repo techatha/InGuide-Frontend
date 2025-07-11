@@ -80,9 +80,10 @@ describe('Unit tests on useDeviceOrientation.ts', () => {
   })
 
   it('UTC-03.01: useDeviceOrientation.requestPermission() TC-01', async () => {
-    await requestPermission()
+    const result:boolean = await requestPermission()
     expect(permission.value).toBe(TD_01)
     expect(mockRequestPermission).toHaveBeenCalledTimes(1)
+    expect(result).toBe(true)
   })
 
   it('UTC-03.02: Test-useDeviceOrientation.getCurrentHeading() TC-01', async () => {

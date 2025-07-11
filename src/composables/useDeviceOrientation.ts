@@ -7,7 +7,7 @@ export const alpha = ref<number | null>(null); // yaw
 export const beta = ref<number | null>(null);  // pitch
 export const gamma = ref<number | null>(null); // roll
 
-export async function requestPermission(): Promise<void> {
+export async function requestPermission(): Promise<boolean> {
   if (
     typeof DeviceOrientationEvent !== 'undefined' &&
     typeof (DeviceOrientationEvent as any).requestPermission === 'function'
@@ -17,10 +17,13 @@ export async function requestPermission(): Promise<void> {
       throw new Error('Permission denied for device orientation');
     } else {
       setupDeviceOrienListener();
+      return true
     }
   } else if (permission.value == 'granted') {
     setupDeviceOrienListener();
+    return true
   }
+  return false
 }
 
 export function getCurrentHeading(): number {
