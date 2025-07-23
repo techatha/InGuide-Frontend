@@ -17,6 +17,18 @@ const mockPOIs: POI[] = [
     name: 'B302',
     type: 'Lecture Room',
     image: '/src/assets/sample-img.jpg'
+  },
+  {
+    id: 3,
+    name: 'B205',
+    type: 'Lecture Room',
+    image: '/src/assets/sample-img.jpg'
+  },
+  {
+    id: 4,
+    name: 'C302',
+    type: 'Computer Lab',
+    image: '/src/assets/sample-img.jpg'
   }
 ]
 

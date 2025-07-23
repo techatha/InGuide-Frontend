@@ -1,15 +1,28 @@
 <template>
   <div
     class="panel"
-    :class="{ expand: isExpanded }"
+    :class="{ expand: isExpanded, 'fully-expand': isFullyExpended }"
     @touchstart="handleTouchStart"
     @touchmove="handleTouchMove"
     @touchend="handleTouchEnd"
   >
     <div class="drag-bar"></div>
-    <div class="expandable-content" v-if="isExpanded">
-      <!-- <p>Swipe Panel Content goes here...</p> -->
-      <div class="panel-content">
+    <div class="expandable-content" v-if="isExpanded">  
+      <div class="scrollable-content">
+        <div class="panel-content">
+        <!-- Show tag when search bar is tapped -->
+        <div v-if="uiStore.isSearchFocused" class="tag-section">
+          <h3 class="panel-title">Finding Nearby</h3>
+          <div class="tag-container">
+            <CategoryChip label="Restroom" icon="restroom" colorClass="restroom" />
+            <CategoryChip label="Lecture" icon="graduation-cap" colorClass="lecture" />
+            <CategoryChip label="General" icon="circle" colorClass="general" />
+            <CategoryChip label="Computer Lab" icon="desktop" colorClass="lab" />
+            <CategoryChip label="Advance Finding" icon="filter" colorClass="advance" />
+          </div>
+        </div>
+
+        <!-- Show Recommended Place -->
         <div>
           <h3 class="panel-title">Recommended Place</h3>
           <PoiCard
@@ -20,22 +33,33 @@
           />
         </div>
       </div>
+
+      </div>     
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useUIMenuPanelStore } from '@/stores/uiMenuPanel'
 import PoiCard from './PoiCard.vue'
 import PoiService, { type POI } from '@/services/PoiService'
+import CategoryChip from './CategoryChip.vue'
 
 const isExpanded = ref(false)
+const isFullyExpended = computed(() => uiStore.isSearchFocused)
 const startY = ref(0)
 const currentY = ref(0)
 const recommendedPOIs = ref<POI[]>([])
+const uiStore = useUIMenuPanelStore()
 
 onMounted(async () => {
   recommendedPOIs.value = await PoiService.getRecommendedPOIs()
+})
+
+// Auto expand/collapse when search bar focus changes
+watch(() => uiStore.isSearchFocused, (focused) => {
+  isExpanded.value = focused
 })
 
 const handleTouchStart = (e: TouchEvent) => {

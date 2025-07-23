@@ -1,15 +1,16 @@
 <template>
-  <div class="chip" :style="{ backgroundColor: color }">
-    <i :class="`fa fa-${icon}`"></i>
+<div class="chip" :class="colorClass">
+    <font-awesome-icon :icon="icon" />
     <span>{{ label }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { defineProps } from 'vue';
+const props = defineProps<{
   label: string
-  icon?: string
-  color?: string
+  icon: any
+  colorClass: string
 }>()
 </script>
 
