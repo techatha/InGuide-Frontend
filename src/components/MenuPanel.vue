@@ -7,7 +7,7 @@
     @touchend="handleTouchEnd"
   >
     <div class="drag-bar"></div>
-    <div class="expandable-content" v-if="isExpanded">  
+    <div class="expandable-content" v-if="isExpanded">
       <div class="scrollable-content">
         <div class="panel-content">
         <!-- Show tag when search bar is tapped -->
@@ -26,15 +26,15 @@
         <div>
           <h3 class="panel-title">Recommended Place</h3>
           <PoiCard
-          v-for="poi in recommendedPOIs"
-          :key="poi.id"
-          :poi="poi"
-          @view-detail="handleViewDetail"
+            v-for="poi in recommendedPOIs"
+            :key="poi.id"
+            :poi="poi"
+            @view-detail="handleViewDetail"
           />
         </div>
       </div>
 
-      </div>     
+      </div>
     </div>
   </div>
 </template>
@@ -43,7 +43,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useUIMenuPanelStore } from '@/stores/uiMenuPanel'
 import PoiCard from './PoiCard.vue'
-import PoiService, { type POI } from '@/services/PoiService'
+import PoiService, { type POI } from '@/services/mocks/PoiService'
 import CategoryChip from './CategoryChip.vue'
 
 const isExpanded = ref(false)

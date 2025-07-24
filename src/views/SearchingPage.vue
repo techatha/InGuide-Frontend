@@ -44,7 +44,7 @@
 import { ref, onMounted } from 'vue'
 import SearchBar from '@/components/SearchBar.vue'
 import PoiCard from '@/components/PoiCard.vue'
-import PoiService, { type POI } from '@/services/PoiService'
+import PoiService, { type POI } from '@/services/mocks/PoiService'
 
 const query = ref('')
 const recommendedPOIs = ref<POI[]>([])
