@@ -13,10 +13,10 @@
         <div>
           <h3 class="panel-title">Recommended Place</h3>
           <PoiCard
-          v-for="poi in recommendedPOIs"
-          :key="poi.id"
-          :poi="poi"
-          @view-detail="handleViewDetail"
+            v-for="poi in recommendedPOIs"
+            :key="poi.id"
+            :poi="poi"
+            @view-detail="handleViewDetail"
           />
         </div>
       </div>
@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import PoiCard from './PoiCard.vue'
-import PoiService, { type POI } from '@/services/PoiService'
+import PoiService, { type POI } from '@/services/mocks/PoiService'
 
 const isExpanded = ref(false)
 const startY = ref(0)

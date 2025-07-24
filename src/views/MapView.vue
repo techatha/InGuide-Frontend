@@ -21,6 +21,7 @@
 import { defineComponent, ref, onMounted } from 'vue'
 import 'leaflet/dist/leaflet.css'
 import * as map from '@/composables/useMap'
+import * as path from '@/composables/usePath'
 import * as position from '@/composables/usePositioningSystem'
 
 export default defineComponent({
@@ -52,7 +53,7 @@ export default defineComponent({
     onMounted(() => {
       map.init(mapContainer.value as HTMLElement)
       map.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
-      map.setWalkablePath()
+      path.renderPaths()
     })
 
     const initPosition = () => {

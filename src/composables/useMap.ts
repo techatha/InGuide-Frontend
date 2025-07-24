@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import L from 'leaflet'
+import L, { type PolylineOptions } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import mockMap from '@/assets/InGuide/F3_floor_plan.svg'
 
@@ -13,11 +13,6 @@ const userPosition = L.circleMarker([0, 0], {
   fillOpacity: 1, // Fill opacity
   pane: 'userPane',
 })
-const invisiblePath = {
-  color: 'orange',
-  weight: 5,
-  smoothFactor: 1
-}
 
 let _mapBound = L.latLngBounds([0, 1], [1, 0])
 let _mapImageOverlay: L.ImageOverlay | null = null
@@ -52,7 +47,7 @@ export function setViewToUser() {
   map.value?.setView(userPosition.getLatLng())
 }
 
-export function setWalkablePath() {
-  _mapWalkablePath = L.polyline([[18.755652251965408, 99.03422248332312], [18.755780543801684,99.03483569353317], [18.755511641013268,99.03451059679955]], invisiblePath)
+export function setWalkablePath(latlng: [[number, number], [number, number]], style: PolylineOptions) {
+  _mapWalkablePath = L.polyline(latlng, style)
   _mapWalkablePath.addTo(map.value as L.Map)
 }
