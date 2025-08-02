@@ -54,14 +54,18 @@ export default defineComponent({
       map.init(mapContainer.value as HTMLElement)
       map.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
       path.renderPaths()
+      map.setView(bounds[0] as [number, number])
     })
 
     const initPosition = () => {
       position.init()
-      setInterval(() => {
-        console.log(position.getPredictionResult())
-        console.log(position.getPosition())
-        map.setUserPosition(position.getPosition())
+      setInterval(async () => {
+        console.log("predicted: ", position.getPredictionResult())
+        console.log("read position: ", position.getPosition())
+        const userPos = position.getPosition()
+        const snappedPos = await path.snapToPath(userPos)
+        console.log("snapped: ", snappedPos)
+        map.setUserPosition(snappedPos as [number, number])
       }, 1000)
       setInterval(() => {
         // console.log(position.getPredictionResult());

@@ -47,6 +47,11 @@ export function setViewToUser() {
   map.value?.setView(userPosition.getLatLng())
 }
 
+export function setView(latlng: [number, number]){
+  const loc = L.latLng(latlng[0], latlng[1])
+  map.value?.setView(loc)
+}
+
 export function setWalkablePath(latlng: [[number, number], [number, number]], style: PolylineOptions) {
   _mapWalkablePath = L.polyline(latlng, style)
   _mapWalkablePath.addTo(map.value as L.Map)

@@ -1,14 +1,14 @@
 import type { MapNode, MapEdge, NavigationGraph } from "@/types/path";
 
 // Nodes
-const node1: MapNode = {id: "a", coordinates: [18.799771920915920, 98.95031809046690]}
-const node2: MapNode = {id: "b", coordinates: [18.799771920915920, 98.95093944127089]}
+const node1: MapNode = {id: "a", coordinates: [18.799661920915920, 98.95048809046690]}
+const node2: MapNode = {id: "b", coordinates: [18.799661920915920, 98.95070944127089]}
 
-const node3: MapNode = {id: "c", coordinates: [18.799417428901960, 98.95031809046690]}
-const node4: MapNode = {id: "d", coordinates: [18.799417428901960, 98.95093944127089]}
+const node3: MapNode = {id: "c", coordinates: [18.799417428901960, 98.95048809046690]}
+const node4: MapNode = {id: "d", coordinates: [18.799417428901960, 98.95070944127089]}
 
-const node5: MapNode = {id: "e", coordinates: [18.799062936888000, 98.95031809046690]}
-const node6: MapNode = {id: "f", coordinates: [18.799062936888000, 98.95093944127089]}
+const node5: MapNode = {id: "e", coordinates: [18.799162936888000, 98.95048809046690]}
+const node6: MapNode = {id: "f", coordinates: [18.799162936888000, 98.95070944127089]}
 
 // Make Node List
 const nodesMap = new Map<string, MapNode>();
