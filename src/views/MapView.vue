@@ -29,8 +29,8 @@ export default defineComponent({
     // this is setup for test
     // CAMT Building location
     const bounds = [
-      [18.799062936888000, 98.95031809046690], // South-West corner
-      [18.799771920915920, 98.95093944127089], // North-East corner
+      [18.799062936888, 98.9503180904669], // South-West corner
+      [18.79977192091592, 98.95093944127089], // North-East corner
     ]
 
     //
@@ -57,15 +57,18 @@ export default defineComponent({
       map.setView(bounds[0] as [number, number])
     })
 
+
     const initPosition = () => {
       position.init()
       setInterval(async () => {
-        console.log("predicted: ", position.getPredictionResult())
-        console.log("read position: ", position.getPosition())
+        // console.log("predicted: ", position.getPredictionResult())
+        // console.log("read position: ", position.getPosition())
         const userPos = position.getPosition()
         const snappedPos = await path.snapToPath(userPos)
-        console.log("snapped: ", snappedPos)
-        map.setUserPosition(snappedPos as [number, number])
+        const heading = position.getRadHeading()
+        // console.log("snapped: ", snappedPos)
+        map.setUserPosition(snappedPos as [number, number], heading)
+        map.setUserDebugPosition(userPos)
       }, 1000)
       setInterval(() => {
         // console.log(position.getPredictionResult());

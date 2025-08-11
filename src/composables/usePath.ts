@@ -33,7 +33,7 @@ export async function snapToPath(userPos: Position): Promise<[number, number] | 
   const lineSegments = await buildLineStrings()
   userPos = switchLatLng(userPos)
 
-  console.log(lineSegments)
+  // console.log(lineSegments)
 
   let closest: [number, number] | null = null
   let minDistance = Infinity

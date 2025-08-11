@@ -35,7 +35,7 @@ export async function init(
   windowSize = window
   dataInterval = interval
 
-  watch([gps.lat, gps.lng, imu.currentIMUReading], ([lat, lng, imu]) => {
+  watch([gps.lat, gps.lng, imu.IMUReading], ([lat, lng, imu]) => {
     if (lat != null && lng != null && (latestGPSLat.value != lat || latestGPSLng.value != lng)) {
       // console.log('gps read!');
       // console.log('new lat/lng: ', [lat, lng]);
@@ -57,6 +57,7 @@ export async function init(
     }
   })
 
+  // KF predict interval
   setInterval(() => {
     const dtMs = Date.now() - latestPredictionUpdate
     const dt = dtMs / 1000
@@ -114,7 +115,11 @@ export function getPredictionResult() {
 }
 
 export function getPosition(): [number, number] {
-  return [latestGPSLat.value, latestGPSLng.value] as [number, number]
+  return kf.getLatLng();
+}
+
+export function getRadHeading(): number {
+  return kf.getRadHeading();
 }
 
 function pushDataIntoWindowFame() {

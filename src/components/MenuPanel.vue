@@ -43,7 +43,8 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useUIMenuPanelStore } from '@/stores/uiMenuPanel'
 import PoiCard from './PoiCard.vue'
-import PoiService, { type POI } from '@/services/mocks/PoiService'
+import PoiService from '@/services/mocks/PoiService'
+import type {POI} from '@/types/poi'
 import CategoryChip from './CategoryChip.vue'
 
 const isExpanded = ref(false)

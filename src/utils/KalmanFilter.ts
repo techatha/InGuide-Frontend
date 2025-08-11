@@ -10,13 +10,13 @@ export class ExtendedKalmanFilter {
   constructor(initialPosition: [number, number], orien: number) {
     // states (x) : [east, north, velocity, heading_yaw]
     this.x = math.matrix([[initialPosition[0]], [initialPosition[1]], [0], [orien]])
-    this.P = math.identity(4) as math.Matrix
+    this.P = math.diag([1, 1, 2, 0.1]) as math.Matrix
     this.H = math.matrix([
       [1, 0, 0, 0], // measure east
       [0, 1, 0, 0], // measure north
       [0, 0, 0, 1], // measure heading
     ])
-    this.R = math.multiply(math.identity(3), 0.0001) as math.Matrix // measurement noise for [east, north, heading]
+    this.R = math.diag([15, 15, 0.5]) as math.Matrix // measurement noise for [east, north, heading]
     this.I = math.identity(4) as math.Matrix
   }
 
@@ -41,6 +41,7 @@ export class ExtendedKalmanFilter {
   }
 
   getState(): [number, number] {
+    // console.log("Filtered => ", this.x.get([3, 0]))
     return [this.x.get([0, 0]), this.x.get([1, 0])]
   }
 }

@@ -14,6 +14,24 @@ const userPosition = L.circleMarker([0, 0], {
   pane: 'userPane',
 })
 
+const headingLine = L.polyline([], {
+  color: '#ff0000', // red arrow
+  weight: 3,
+  opacity: 0.9,
+  pane: 'userPane',
+})
+
+// for debug
+const userDebugPosition = L.circleMarker([0, 0], {
+  radius: 10, // Radius of the circle
+  fillColor: '#ED7117', // Fill color
+  color: '#fffbf3', // Border color
+  weight: 2, // Border width
+  opacity: 1, // Border opacity
+  fillOpacity: 1, // Fill opacity
+  pane: 'userPane',
+})
+
 let _mapBound = L.latLngBounds([0, 1], [1, 0])
 let _mapImageOverlay: L.ImageOverlay | null = null
 let _mapWalkablePath: L.Polyline | null = null
@@ -25,6 +43,9 @@ export function init(mapContainer: HTMLElement) {
   map.value.createPane('userPane').style.zIndex = '999'
   _mapImageOverlay = L.imageOverlay(mockMap, _mapBound).addTo(map.value as L.Map)
   userPosition.addTo(map.value as L.Map)
+  headingLine.addTo(map.value as L.Map)
+  // debug position
+  userDebugPosition.addTo(map.value as L.Map)
   console.log('map at 0,0')
 }
 
@@ -39,8 +60,23 @@ export function setMapOverlay(filepath: string) {
   _mapImageOverlay?.setUrl(filepath)
 }
 
-export function setUserPosition(newLatLng: [number, number]) {
+export function setUserPosition(newLatLng: [number, number], headingRad: number) {
   userPosition.setLatLng(newLatLng)
+  // Calculate the heading line end point
+  const length = 0.00005 // ~5 meters (adjust if needed)
+  const endLat = newLatLng[0] + length * Math.cos(- headingRad)
+  const endLng = newLatLng[1] + length * Math.sin(- headingRad)
+
+  // Update the heading line
+  headingLine.setLatLngs([
+    [newLatLng[0], newLatLng[1]],
+    [endLat, endLng],
+  ])
+}
+
+// for debug
+export function setUserDebugPosition(newLatLng: [number, number]) {
+  userDebugPosition.setLatLng(newLatLng)
 }
 
 export function setViewToUser() {

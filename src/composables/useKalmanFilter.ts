@@ -13,17 +13,21 @@ export type Mode = 'forward' | 'turn' | 'halt'
 export const state = ref<number | null>(null)
 const kf = ref<ExtendedKalmanFilter | null>(null)
 const Q = ref<math.Matrix | null>(null)
+const maxAccel = 5.0;
+const maxVelocity = 3.0;
+const dampingFactor = 0.98;
 
 export function init(
   initLat: number,
   initLng: number,
   orien: number,
-  processNoise: number = 0.025,
+  processNoise: number = 0.001,
 ): boolean {
   lat0.value = initLat
   lng0.value = initLng
   kf.value = new ExtendedKalmanFilter(latLngToENU(initLat, initLng), orien)
   Q.value = math.multiply(math.identity(4), processNoise) as math.Matrix
+  Q.value = Q.value.set([3, 3], 0.15)
   if (kf.value == null) {
     return false
   }
@@ -31,7 +35,7 @@ export function init(
 }
 
 export function isInitialized(): boolean {
-  return kf.value !== null
+  return kf.value !== null && kf.value !== undefined
 }
 
 export function predict(
@@ -49,8 +53,13 @@ export function predict(
 
   const acc_x = acc.x as number
   const acc_y = acc.y as number
-  const acc_z = acc.z as number
-  const a = Math.sqrt(acc_x * acc_x + acc_y * acc_y + acc_z * acc_z)
+
+  const forward_x = Math.sin(head_n0)
+  const forward_y = Math.cos(head_n0)
+
+  const accel = (acc_x * forward_x) + (acc_y * forward_y)
+  const capped_accel = Math.min(accel, maxAccel);
+
   let result: any
   switch (mode) {
     case 1:
@@ -58,10 +67,10 @@ export function predict(
       if (velo_n0 < 0.5) {
         kick_boost_acc = 0.7
       }
-      result = predictForward(east_n0, nort_n0, kick_boost_acc, head_n0, a, dt)
+      result = predictForward(east_n0, nort_n0, kick_boost_acc, head_n0, capped_accel, dt)
       break
     case 2:
-      result = predictTurn(east_n0, nort_n0, velo_n0, head_n0, a, dt)
+      result = predictTurn(east_n0, nort_n0, velo_n0, head_n0, capped_accel, dt)
       break
     case 0:
       result = predictHalt(east_n0, nort_n0)
@@ -87,6 +96,11 @@ export function getLatLng(): [number, number] {
   const result = kf.value?.getState() as [number, number]
   const latLng = ENUToLatLng(result[0], result[1])
   return latLng
+}
+
+export function getRadHeading(): number {
+  const result = kf.value?.x as math.Matrix
+  return result.get([3, 0])
 }
 
 function latLngToENU(lat: number, lng: number): [number, number] {
@@ -119,8 +133,8 @@ function blendF(v: number, yaw: number, dt: number, prob: Probability) {
 }
 
 function blendQ(prob: Probability): math.Matrix {
-  const QForward = math.diag([0.4, 0.4, 0.1, 0.25])
-  const QTurn = math.diag([0.5, 0.5, 0.5, 0.3])
+  const QForward = math.diag([0.2, 0.2, 0.1, 0.05])
+  const QTurn = math.diag([0.5, 0.5, 0.5, 0.05])
   const QHalt = math.diag([0.005, 0.005, 0.005, 0.05])
 
   return math.add(
@@ -130,24 +144,27 @@ function blendQ(prob: Probability): math.Matrix {
   )
 }
 
-function predictForward(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {
+export function predictForward(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {
   const east_n1 = e + v * Math.sin(yaw) * dt
   const nort_n1 = n + v * Math.cos(yaw) * dt
-  const velo_n1 = v + acc * dt
+  const velo_n1 = Math.min((v + acc * dt) * dampingFactor, maxVelocity);
+  console.log("Forward (m/s) => ", velo_n1)
   return { e: east_n1, n: nort_n1, v: velo_n1 }
 }
 
-function predictTurn(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {
+export function predictTurn(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {
   const east_n1 = e + v * Math.sin(yaw) * dt
   const nort_n1 = n + v * Math.cos(yaw) * dt
-  const velo_n1 = 0 + acc * dt
+  const velo_n1 = Math.min((v + acc * dt) * dampingFactor, maxVelocity);
+  console.log("Turn (m/s) => ", velo_n1)
   return { e: east_n1, n: nort_n1, v: velo_n1 }
 }
 
-function predictHalt(e: number, n: number) {
+export function predictHalt(e: number, n: number) {
   const east_n1 = e
   const nort_n1 = n
   const velo_n1 = 0
+  console.log("Halt (m/s) => ", velo_n1)
   return { e: east_n1, n: nort_n1, v: velo_n1 }
 }
 
@@ -198,3 +215,7 @@ function jacobianFHalt(): math.Matrix {
   F.set([3, 3], 1)
   return F
 }
+
+// function radToDeg(rad: number): number {
+//   return (rad * 180) / Math.PI;
+// }
