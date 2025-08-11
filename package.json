@@ -14,9 +14,10 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.0.0",
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
-    "@fortawesome/vue-fontawesome": "^3.0.8",
+    "@fortawesome/vue-fontawesome": "^3.1.1",
     "@turf/turf": "^7.2.0",
     "axios": "^1.9.0",
     "font-awesome": "^4.7.0",

@@ -23,6 +23,7 @@ import 'leaflet/dist/leaflet.css'
 import * as map from '@/composables/useMap'
 import * as path from '@/composables/usePath'
 import * as position from '@/composables/usePositioningSystem'
+import * as poi from '@/composables/usePOI'
 
 export default defineComponent({
   setup() {
@@ -53,7 +54,8 @@ export default defineComponent({
     onMounted(() => {
       map.init(mapContainer.value as HTMLElement)
       map.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
-      path.renderPaths()
+      path.renderPaths();
+      poi.renderAllPOI();
       map.setView(bounds[0] as [number, number])
     })
 
