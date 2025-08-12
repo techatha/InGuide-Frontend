@@ -26,8 +26,7 @@ export function init(
   lat0.value = initLat
   lng0.value = initLng
   kf.value = new ExtendedKalmanFilter(latLngToENU(initLat, initLng), orien)
-  Q.value = math.multiply(math.identity(4), processNoise) as math.Matrix
-  Q.value = Q.value.set([3, 3], 0.15)
+  Q.value = math.diag([1, 1, 0.1, 1])
   if (kf.value == null) {
     return false
   }
@@ -78,6 +77,7 @@ export function predict(
   }
   let head_n1 = (head_n0 + gyroYawRateRad * dt) % (2 * Math.PI)
   if (head_n1 < 0) head_n1 += 2 * Math.PI
+  console.log('head_n1: ', radToDeg(head_n1))
   const x = math.matrix([[result.e], [result.n], [result.v], [head_n1]])
   const F = blendF(velo_n0, head_n0, dt, prob)
   const Q_blend = blendQ(prob)
@@ -216,6 +216,6 @@ function jacobianFHalt(): math.Matrix {
   return F
 }
 
-// function radToDeg(rad: number): number {
-//   return (rad * 180) / Math.PI;
-// }
+function radToDeg(rad: number): number {
+  return (rad * 180) / Math.PI;
+}

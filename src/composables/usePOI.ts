@@ -22,7 +22,8 @@ function createSvgIcon(icon: IconDefinition, size = 18, color = 'white') {
 export function createPOIMarker(
   latlng: [number, number],
   color: string,
-  poiType: string
+  poiType: string,
+  name?: string
 ) {
   const iconDef = poiIconMap[poiType] || faCircle
   const svgIcon = createSvgIcon(iconDef)
@@ -31,24 +32,43 @@ export function createPOIMarker(
     className: 'custom-poi-icon',
     html: `
       <div style="
-        background-color: ${color};
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 0 5px rgba(0,0,0,0.4);
+        text-align: center;
+        color: white;
+        font-weight: 600;
+        font-size: 12px;
+        user-select: none;
       ">
-        ${svgIcon}
+        <div style="
+          background-color: ${color};
+          border-radius: 50%;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid white;
+          box-shadow: 0 0 5px rgba(0,0,0,0.4);
+        ">
+          ${svgIcon}
+        </div>
+        <div style="margin-top: 2px; color: black; background: white; padding: 0 4px; border-radius: 3px; white-space: nowrap;">
+          ${name ?? ''}
+        </div>
       </div>
     `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
+    iconSize: [36, 50],  // increase height to fit label
+    iconAnchor: [18, 50], // anchor at bottom center of icon + label
   })
 
   const poi = L.marker(latlng, { icon })
+
+  if (name) {
+    poi.bindPopup(name)
+  }
+
   try {
     poi.addTo(map.value as L.Map)
     return true
@@ -63,6 +83,6 @@ export async function renderAllPOI() {
   const POIs = await PoiService.getRecommendedPOIs()
   POIs.forEach(p => {
     const color = '#FDA172'
-    createPOIMarker(p.location, color, p.type)
+    createPOIMarker(p.location, color, p.type, p.name)
   });
 }

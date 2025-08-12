@@ -16,7 +16,7 @@ export class ExtendedKalmanFilter {
       [0, 1, 0, 0], // measure north
       [0, 0, 0, 1], // measure heading
     ])
-    this.R = math.diag([15, 15, 0.5]) as math.Matrix // measurement noise for [east, north, heading]
+    this.R = math.diag([100, 100, 0.01]) as math.Matrix // measurement noise for [east, north, heading]
     this.I = math.identity(4) as math.Matrix
   }
 

@@ -17,7 +17,8 @@ const latestIMUData = ref<IMUData | null>(null)
 
 const latestPrediction = ref<PredictionResponse | null>(null)
 const isSubmittingPrediction = ref(false)
-let latestPredictionUpdate: number
+
+const imuBuffer: IMUData[] = []
 
 const windowData = ref<Data[]>([])
 let windowSize: number
@@ -35,7 +36,7 @@ export async function init(
   windowSize = window
   dataInterval = interval
 
-  watch([gps.lat, gps.lng, imu.IMUReading], ([lat, lng, imu]) => {
+  watch([gps.lat, gps.lng], ([lat, lng]) => {
     if (lat != null && lng != null && (latestGPSLat.value != lat || latestGPSLng.value != lng)) {
       // console.log('gps read!');
       // console.log('new lat/lng: ', [lat, lng]);
@@ -49,20 +50,38 @@ export async function init(
       ) {
         kf.init(lat, lng, (orien.getCurrentHeading() * Math.PI) / 180)
       }
-      kf.update(lat, lng, (orien.getCurrentHeading() * Math.PI) / 180)
-      latestPredictionUpdate = Date.now()
     }
-    if (imu != null && latestIMUData.value != imu) {
-      latestIMUData.value = imu
+  })
+
+  watch(orien.currentHeading, (orien) => {
+    if(latestGPSLat.value !== null && latestGPSLng.value !== null && orien !== null){
+      kf.update(latestGPSLat.value, latestGPSLng.value, (orien * Math.PI) / 180)
+    }
+  })
+
+ watch(imu.IMUReading, (imuData) => {
+    if (imuData) {
+      latestIMUData.value = imuData
+      imuBuffer.push(imuData)
     }
   })
 
   // KF predict interval
   setInterval(() => {
-    const dtMs = Date.now() - latestPredictionUpdate
-    const dt = dtMs / 1000
-    const acc: Acceleration = latestIMUData.value?.accelerometer as Acceleration
-    const gyro: RotationRate = latestIMUData.value?.rotationRate as RotationRate
+    if (imuBuffer.length === 0) return
+    // const dtMs = Date.now() - latestPredictionUpdate
+    // const dt = dtMs / 1000
+    const acc: Acceleration = imuBuffer.reduce((acc, curr) => ({
+      x: acc.x + (curr.accelerometer.x ?? 0),
+      y: acc.y + (curr.accelerometer.y ?? 0),
+      z: acc.z + (curr.accelerometer.z ?? 0),
+    }), { x: 0, y: 0, z: 0 })
+    const gyro: RotationRate = imuBuffer.reduce((gyro, curr) => ({
+      alpha: gyro.alpha + (curr.rotationRate.alpha ?? 0),
+      beta: gyro.beta + (curr.rotationRate.beta ?? 0),
+      gamma: gyro.gamma + (curr.rotationRate.gamma ?? 0),
+    }), { alpha: 0, beta: 0, gamma: 0 })
+
     const worldAcc: Acceleration = rotateToWorldFrame(acc, gyro)
 
     // Convert gyro.alpha (deg/s) to radians per second for yaw rate
@@ -71,7 +90,7 @@ export async function init(
     kf.predict(
       latestPrediction.value?.prediction as number,
       worldAcc,
-      dt,
+      2.0,
       latestPrediction.value?.probability as Probability,
       gyroYawRateRad,
     )
