@@ -16,7 +16,7 @@
 <script setup lang="ts">
 defineProps<{
     poi: {
-        id: number
+        id: string | number
         name: string
         type: string
         image: string

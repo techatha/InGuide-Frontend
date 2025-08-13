@@ -12,7 +12,6 @@
 import { useRoute } from 'vue-router'
 import MapView from './views/MapView.vue'
 import { computed } from 'vue'
-import '@fortawesome/fontawesome-free/css/all.min.css'
 
 
 const route = useRoute()

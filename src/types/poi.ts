@@ -1,7 +1,8 @@
 export interface POI {
-  id: number
+  id: string
   name: string
   location: [number, number]
   type: string
   image: string
+  detail: string
 }
