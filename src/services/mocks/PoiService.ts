@@ -6,7 +6,7 @@ const mockPOIs: POI[] = [
     name: 'Toilet 3rd Floor',
     location: [18.7991, 98.9504],
     type: 'Restroom',
-    image: '/src/assets/sample-img.jpg',
+    images: ['/src/assets/sample-img.jpg'],
     detail: 'text'
   },
   {
@@ -14,7 +14,7 @@ const mockPOIs: POI[] = [
     name: 'B302',
     location: [18.7993, 98.9505],
     type: 'Lecture Room',
-    image: '/src/assets/sample-img.jpg',
+    images: ['/src/assets/sample-img.jpg'],
     detail: 'description'
   },
   {
@@ -22,7 +22,7 @@ const mockPOIs: POI[] = [
     name: 'B205',
     location: [18.7995, 98.9507],
     type: 'Lecture Room',
-    image: '/src/assets/sample-img.jpg',
+    images: ['/src/assets/sample-img.jpg'],
     detail: 'test'
   },
   {
@@ -30,7 +30,7 @@ const mockPOIs: POI[] = [
     name: 'C302',
     location: [18.7997, 98.9508],
     type: 'Computer Lab',
-    image: '/src/assets/sample-img.jpg',
+    images: ['/src/assets/sample-img.jpg'],
     detail: 'test test'
   },
 ]

@@ -1,3 +1,4 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <template>
   <div class="detail-card">
     <div class="header">
@@ -12,12 +13,7 @@
     <!-- Always use the gallery; show up to 3 images if present, otherwise 1 -->
     <!-- edit later -->
     <div class="gallery" v-if="galleryImages.length">
-      <img
-        v-for="(src, i) in galleryImages"
-        :key="i"
-        :src="src"
-        alt="POI image"
-      />
+      <img v-for="(src, i) in galleryImages" :key="i" :src="src" alt="POI image" />
     </div>
 
     <p class="desc" v-if="poi.detail">{{ poi.detail }}</p>
@@ -37,9 +33,7 @@ const emit = defineEmits<{ (e: 'back'): void }>()
 // Build the gallery from poi.images (preferred) or single poi.image (fallback).
 // No repetition: we just show however many exist, capped at 3.
 const galleryImages = computed(() => {
-  const imgs = props.poi.images?.length
-    ? props.poi.images
-    : (props.poi.image ? [props.poi.image] : [])
+  const imgs = props.poi.images
   return imgs.slice(0, 3)
 })
 
@@ -48,7 +42,7 @@ function startNav() {
 }
 
 function backToList() {
-  nav.setSelectedPOI(null as any)
+  // nav.setSelectedPOI(null as any)
   emit('back')
 }
 </script>

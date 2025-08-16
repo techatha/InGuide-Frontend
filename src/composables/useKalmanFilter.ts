@@ -26,7 +26,7 @@ export function init(
   lat0.value = initLat
   lng0.value = initLng
   kf.value = new ExtendedKalmanFilter(latLngToENU(initLat, initLng), orien)
-  Q.value = math.diag([1, 1, 0.1, 1])
+  Q.value = math.multiply(math.diag([1, 1, 0.1, 1]), processNoise)
   if (kf.value == null) {
     return false
   }

@@ -3,6 +3,6 @@ export interface POI {
   name: string
   location: [number, number]
   type: string
-  image: string
+  images: string[]
   detail: string
 }

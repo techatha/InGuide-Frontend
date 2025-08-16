@@ -1,6 +1,6 @@
 <template>
     <div class="poi-card">
-        <img :src="poi.image" class="poi-img" alt="POI" />
+        <img :src="poi.images[0]" class="poi-img" alt="POI" />
         <div class="poi-info">
             <div class="poi-text">
                 <div class="poi-name">{{ poi.name }}</div>
@@ -19,7 +19,7 @@ defineProps<{
         id: string | number
         name: string
         type: string
-        image: string
+        images: string[]
     }
 }>()
 </script>

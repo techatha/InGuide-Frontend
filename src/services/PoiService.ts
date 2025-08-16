@@ -10,14 +10,14 @@ const httpClient = axios.create({
 })
 
 /**
- * Sends a batch of sensor predictions to the backend and receives a prediction result.
- * @param payload The data structure containing an array of prediction objects with data interval.
- * @returns A Promise that resolves to the PredictionResult from the API.
+ * Request list of POIs on specific floor and building.
+ * @param buildingId object id of the building.
+ * @param floor specify a floor of this bilding to retriece POIs.
+ * @returns A Promise that resolves to the list of POIs on selcleted floor of the buliding from the API.
  */
-export async function submitPayload(payload: PredictionPayload) {
+export async function getPOIs(buidingId: string, floor: number) {
   try {
-    // console.log("service :", payload);
-    const response = await httpClient.post<PredictionResponse>('/model/predictMovement', payload)
+    const response = await httpClient.post<>('/predictMovement', payload)
     // console.log('backend response :', response.data)
     return response.data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
