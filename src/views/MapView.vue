@@ -5,13 +5,13 @@
 
     <div class="floor-list">
       <div
-        v-for="floor in floors"
-        :key="floor"
+        v-for="floor in mapInfo.floors"
+        :key="floor.floor"
         class="floor"
-        :class="{ selected: floor === selectedFloor }"
-        @click="initPosition()"
+        :class="{ selected: floor.floor === mapInfo.current_floor.floor }"
+        @click="changeFloorPlan(floor)"
       >
-        F{{ floor }}
+        F{{ floor.floor }}
       </div>
     </div>
   </div>
@@ -20,13 +20,17 @@
 <script lang="ts">
 import { defineComponent, ref, onMounted } from 'vue'
 import 'leaflet/dist/leaflet.css'
+import { getFloors } from '@/services/BuildingService'
+import { useMapInfoStore } from '@/stores/mapInfo'
 import * as map from '@/composables/useMap'
 import * as path from '@/composables/usePath'
 import * as position from '@/composables/usePositioningSystem'
 import * as poi from '@/composables/usePOI'
+import type { Floor } from '@/types/floor'
 
 export default defineComponent({
   setup() {
+    const mapInfo = useMapInfoStore();
     // this is setup for test
     // CAMT Building location
     const bounds = [
@@ -51,14 +55,6 @@ export default defineComponent({
       selectedFloor.value = floor
       // TODO: switch overlay if floor changes
     }
-    onMounted(() => {
-      map.init(mapContainer.value as HTMLElement)
-      map.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
-      path.renderPaths();
-      poi.renderAllPOI();
-      map.setView(bounds[0] as [number, number])
-    })
-
 
     const initPosition = () => {
       position.init()
@@ -77,12 +73,31 @@ export default defineComponent({
       }, 2000)
     }
 
+    const changeFloorPlan = (floor: Floor) => {
+      map.changeFloorPlan(floor.floor_plan_url);
+      mapInfo.current_floor = floor;
+    }
+
+    onMounted(async() => {
+      const floors = await getFloors(mapInfo.current_buildingId)
+      mapInfo.current_floor = floors[0]
+      console.log("nab nab")
+      await map.init(mapContainer.value as HTMLElement)
+      map.changeFloorPlan(mapInfo.current_floor.floor_plan_url)
+      map.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
+      path.renderPaths();
+      poi.renderAllPOI();
+      map.setView(bounds[0] as [number, number])
+    })
+
     return {
+      mapInfo,
       mapContainer,
       floors,
       selectedFloor,
       selectFloor,
       initPosition,
+      changeFloorPlan,
     }
   },
 })

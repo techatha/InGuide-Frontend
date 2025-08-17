@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import L, { type PolylineOptions } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import mockMap from '@/assets/InGuide/F3_floor_plan.svg'
+import mockMap from '@/assets/sample-img.jpg'
 
 export const map = ref<L.Map | null>(null)
 const userPosition = L.circleMarker([0, 0], {
@@ -36,17 +36,24 @@ let _mapBound = L.latLngBounds([0, 1], [1, 0])
 let _mapImageOverlay: L.ImageOverlay | null = null
 let _mapWalkablePath: L.Polyline | null = null
 
-export function init(mapContainer: HTMLElement) {
-  map.value = L.map(mapContainer, {
-    zoomControl: false,
-  }).fitBounds(_mapBound)
-  map.value.createPane('userPane').style.zIndex = '999'
-  _mapImageOverlay = L.imageOverlay(mockMap, _mapBound).addTo(map.value as L.Map)
-  userPosition.addTo(map.value as L.Map)
-  headingLine.addTo(map.value as L.Map)
-  // debug position
-  userDebugPosition.addTo(map.value as L.Map)
-  console.log('map at 0,0')
+export async function init(mapContainer: HTMLElement) {
+  return new Promise<void>((resolve, reject) => {
+    map.value = L.map(mapContainer, {
+      zoomControl: false,
+    }).fitBounds(_mapBound)
+    map.value.createPane('userPane').style.zIndex = '999'
+    _mapImageOverlay = L.imageOverlay(mockMap, _mapBound).addTo(map.value as L.Map)
+    _mapImageOverlay.once("load", () => resolve())
+    _mapImageOverlay.once("error", (err) => {
+      console.error("Failed to load map image", err)
+      reject(new Error("Failed to load map image"))
+    })
+    userPosition.addTo(map.value as L.Map)
+    headingLine.addTo(map.value as L.Map)
+    // debug position
+    userDebugPosition.addTo(map.value as L.Map)
+    console.log('map at 0,0')
+  })
 }
 
 export function setMapBound(sw: [number, number], ne: [number, number]) {
@@ -64,8 +71,8 @@ export function setUserPosition(newLatLng: [number, number], headingRad: number)
   userPosition.setLatLng(newLatLng)
   // Calculate the heading line end point
   const length = 0.00005 // ~5 meters (adjust if needed)
-  const endLat = newLatLng[0] + length * Math.cos(- headingRad)
-  const endLng = newLatLng[1] + length * Math.sin(- headingRad)
+  const endLat = newLatLng[0] + length * Math.cos(-headingRad)
+  const endLng = newLatLng[1] + length * Math.sin(-headingRad)
 
   // Update the heading line
   headingLine.setLatLngs([
@@ -83,12 +90,21 @@ export function setViewToUser() {
   map.value?.setView(userPosition.getLatLng())
 }
 
-export function setView(latlng: [number, number]){
+export function setView(latlng: [number, number]) {
   const loc = L.latLng(latlng[0], latlng[1])
   map.value?.setView(loc)
 }
 
-export function setWalkablePath(latlng: [[number, number], [number, number]], style: PolylineOptions) {
+export function setWalkablePath(
+  latlng: [[number, number], [number, number]],
+  style: PolylineOptions,
+) {
   _mapWalkablePath = L.polyline(latlng, style)
   _mapWalkablePath.addTo(map.value as L.Map)
+}
+
+export function changeFloorPlan(newImageUrl: string) {
+  if (_mapImageOverlay) {
+    _mapImageOverlay.setUrl(newImageUrl)
+  }
 }
