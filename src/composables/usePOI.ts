@@ -1,5 +1,10 @@
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
-import { faRestroom, faChalkboardTeacher, faDesktop, faCircle } from '@fortawesome/free-solid-svg-icons'
+import {
+  faRestroom,
+  faChalkboardTeacher,
+  faDesktop,
+  faCircle,
+} from '@fortawesome/free-solid-svg-icons'
 import PoiService from '@/services/mocks/PoiService'
 import { map } from './useMap'
 import L from 'leaflet'
@@ -8,6 +13,12 @@ const poiIconMap: Record<string, IconDefinition> = {
   'Restroom': faRestroom,
   'Lecture Room': faChalkboardTeacher,
   'Computer Lab': faDesktop,
+}
+
+const poiColorMap: Record<string, string> = {
+  'Restroom': "#FF0000",
+  'Lecture Room': "#00FF00",
+  'Computer Lab': "#0000FF",
 }
 
 function createSvgIcon(icon: IconDefinition, size = 18, color = 'white') {
@@ -21,12 +32,12 @@ function createSvgIcon(icon: IconDefinition, size = 18, color = 'white') {
 
 export function createPOIMarker(
   latlng: [number, number],
-  color: string,
   poiType: string,
-  name?: string
+  name?: string,
 ) {
   const iconDef = poiIconMap[poiType] || faCircle
   const svgIcon = createSvgIcon(iconDef)
+  const color = poiColorMap[poiType] || '#FDA172'
 
   const icon = L.divIcon({
     className: 'custom-poi-icon',
@@ -59,7 +70,7 @@ export function createPOIMarker(
         </div>
       </div>
     `,
-    iconSize: [36, 50],  // increase height to fit label
+    iconSize: [36, 50], // increase height to fit label
     iconAnchor: [18, 50], // anchor at bottom center of icon + label
   })
 
@@ -78,11 +89,9 @@ export function createPOIMarker(
   }
 }
 
-
 export async function renderAllPOI() {
   const POIs = await PoiService.getRecommendedPOIs()
-  POIs.forEach(p => {
-    const color = '#FDA172'
-    createPOIMarker(p.location, color, p.type, p.name)
-  });
+  POIs.forEach((p) => {
+    createPOIMarker(p.location, p.type, p.name)
+  })
 }

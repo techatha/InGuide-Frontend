@@ -42,12 +42,13 @@ export async function init(mapContainer: HTMLElement) {
       zoomControl: false,
     }).fitBounds(_mapBound)
     map.value.createPane('userPane').style.zIndex = '999'
-    _mapImageOverlay = L.imageOverlay(mockMap, _mapBound).addTo(map.value as L.Map)
-    _mapImageOverlay.once("load", () => resolve())
-    _mapImageOverlay.once("error", (err) => {
-      console.error("Failed to load map image", err)
-      reject(new Error("Failed to load map image"))
+    _mapImageOverlay = L.imageOverlay(mockMap, _mapBound)
+    _mapImageOverlay.once('load', () => resolve())
+    _mapImageOverlay.once('error', (err) => {
+      console.error('Failed to load map image', err)
+      reject(new Error('Failed to load map image'))
     })
+    _mapImageOverlay.addTo(map.value as L.Map)
     userPosition.addTo(map.value as L.Map)
     headingLine.addTo(map.value as L.Map)
     // debug position
@@ -103,8 +104,15 @@ export function setWalkablePath(
   _mapWalkablePath.addTo(map.value as L.Map)
 }
 
-export function changeFloorPlan(newImageUrl: string) {
-  if (_mapImageOverlay) {
-    _mapImageOverlay.setUrl(newImageUrl)
-  }
+export async function changeFloorPlan(newImageUrl: string) {
+  return new Promise<void>((resolve, reject) => {
+    if (_mapImageOverlay) {
+      _mapImageOverlay.once('load', () => resolve())
+      _mapImageOverlay.once('error', (err) => {
+        console.error('Failed to load map image', err)
+        reject(new Error('Failed to load map image'))
+      });
+      _mapImageOverlay.setUrl(newImageUrl)
+    }
+  })
 }

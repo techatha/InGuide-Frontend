@@ -83,7 +83,7 @@ export default defineComponent({
       mapInfo.current_floor = floors[0]
       console.log("nab nab")
       await map.init(mapContainer.value as HTMLElement)
-      map.changeFloorPlan(mapInfo.current_floor.floor_plan_url)
+      await map.changeFloorPlan(mapInfo.current_floor.floor_plan_url)
       map.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
       path.renderPaths();
       poi.renderAllPOI();
