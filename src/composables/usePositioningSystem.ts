@@ -6,7 +6,7 @@ import * as orien from '@/composables/useDeviceOrientation'
 import * as kf from '@/composables/useKalmanFilter'
 import type { Acceleration, RotationRate, IMUData } from '@/types/IMU'
 import type { Data, PredictionPayload, PredictionResponse, Probability } from '@/types/prediction'
-import { submitPayload } from '@/services/predictionService'
+import { submitPayload } from '@/services/PredictionService'
 import { create, all } from 'mathjs'
 
 const math = create(all)
