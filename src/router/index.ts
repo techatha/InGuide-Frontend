@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MapView from '@/views/MapView.vue'
-import PoiDetail from '@/views/pannelViews/PoiDetailview.vue'
-import RecommendedView from '@/views/pannelViews/RecommendedView.vue'
+import PoiDetail from '@/views/panelViews/PoiDetailview.vue'
+import RecommendedView from '@/views/panelViews/RecommendedView.vue'
 
 
 
