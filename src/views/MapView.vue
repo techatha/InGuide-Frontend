@@ -14,17 +14,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import * as map from '@/composables/useMap'
 import * as path from '@/composables/usePath'
 import * as position from '@/composables/usePositioningSystem'
 import * as poi from '@/composables/usePOI'
+import { useMapInfoStore } from '@/stores/mapInfo'
 // vue component
 import SearchBar from '@/components/SearchBar.vue'
 import PopUpWindow from '@/components/PopUpWindow.vue'
 import MenuPanel from '@/components/MenuPanel.vue'
-const showPopup = ref(false)
 
+const showPopup = ref(false)
+const mapInfo = useMapInfoStore()
 
 const initPosition = () => {
   position.init()
@@ -44,15 +46,19 @@ const initPosition = () => {
   showPopup.value = false;
 }
 
-onMounted(() => {
-  path.renderPaths()
-  poi.renderAllPOI()
-  setTimeout(() => {
-    if(position.isAvailable()){
-      showPopup.value = true
-    }
-  }, 1000)
-})
+watch(() => mapInfo.isMapInitialized, (isInitialized) => {
+  if (isInitialized) {
+    console.log('Map is ready, rendering paths and POIs!');
+    path.renderPaths();
+    poi.renderAllPOI();
+
+    setTimeout(() => {
+      if (position.isAvailable()) {
+        showPopup.value = true;
+      }
+    }, 1000);
+  }
+}, { immediate: true })
 </script>
 
 <style src="../style/MapView.css"></style>

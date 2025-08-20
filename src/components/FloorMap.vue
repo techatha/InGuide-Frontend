@@ -49,6 +49,8 @@ onMounted(async () => {
   await map.changeFloorPlan(mapInfo.current_floor.floor_plan_url)
   map.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
   map.setView(bounds[0] as [number, number])
+
+  mapInfo.setMapInitialized(true)
 })
 </script>
 

@@ -26,7 +26,7 @@ onMounted(async() => {
   // CHANGE TO RECCOMMEND SERVICE LATER (NO ROUTE FOR THAT YET)
   const floor = 3
   recommendedPOIs.value = await PoiService.getPOIs(buildingId, floor)
-  console.log(recommendedPOIs)
+  // console.log(recommendedPOIs)
 })
 
 function handleViewDetail(poi: POI) {
