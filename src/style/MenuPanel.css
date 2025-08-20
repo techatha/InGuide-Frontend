@@ -89,3 +89,19 @@
 .padding {
   padding: 20px;
 }
+
+.gallery {
+  display: flex; /* Arranges the images in a row */
+  gap: 10px; /* Adds space between each image */
+  overflow-x: auto; /* The core property: enables horizontal scrolling when content overflows */
+  white-space: nowrap; /* Prevents images from wrapping to the next line */
+
+  /* Optional: Hides the scrollbar for a cleaner look on some browsers */
+  scrollbar-width: none; /* For Firefox */
+  -ms-overflow-style: none; /* For Internet Explorer and Edge */
+}
+
+/* Optional: Hides the scrollbar for WebKit browsers (Chrome, Safari) */
+.gallery::-webkit-scrollbar {
+  display: none;
+}
