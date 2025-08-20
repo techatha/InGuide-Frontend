@@ -29,15 +29,18 @@ import { useRouter } from 'vue-router';
 import PoiService from '@/services/PoiService';
 import type { POI } from '@/types/poi'
 import { useMapInfoStore } from '@/stores/mapInfo';
+import { useUIMenuPanelStore } from '@/stores/uiMenuPanel';
 
 const props = defineProps<{ id: string }>();
 const router = useRouter();
 
 const mapInfo = useMapInfoStore()
+const uiStore = useUIMenuPanelStore()
 const building_id = mapInfo.current_buildingId
 const poi = ref<POI | null>(null);
 
 const fetchData = async (id: string) => {
+  uiStore.showDetail()
   poi.value = await PoiService.getPOIById(building_id, id);
 };
 

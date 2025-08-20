@@ -7,14 +7,17 @@
       detail: uiStore.isShowDetail,
     }"
   >
-  <div class="padding" @touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
-    <div class="drag-bar"></div>
-  </div>
-    <div class="expandable-content">
-      <div class="scrollable-content">
-        <div class="panel-content">
-          <slot></slot>
-        </div>
+    <div
+      class="padding"
+      @touchstart="handleTouchStart"
+      @touchmove="handleTouchMove"
+      @touchend="handleTouchEnd"
+    >
+      <div class="drag-bar"></div>
+    </div>
+    <div class="expandable-content scrollable-content">
+      <div class="panel-content">
+        <slot></slot>
       </div>
     </div>
   </div>
@@ -48,7 +51,7 @@ const handleTouchMove = (e: TouchEvent) => {
   else if (deltaY < -30) {
     if (uiStore.isFullyExpanded) {
       uiStore.expand()
-    } else if (uiStore.isExpanded) {
+    } else if (uiStore.isExpanded || uiStore.isShowDetail) {
       uiStore.close()
     }
   }
