@@ -1,8 +1,13 @@
 <!-- eslint-disable @typescript-eslint/no-unused-vars -->
 <template>
-  <SearchBar/>
+  <SearchBar />
   <MenuPanel>
-    <RouterView/>
+    <div v-show="uiStore.isSearchFocused">
+      <SearchResultsView />
+    </div>
+    <div v-show="!uiStore.isSearchFocused">
+      <RouterView />
+    </div>
   </MenuPanel>
   <PopUpWindow name="popup" v-model:visible="showPopup">
     <h2 class="text-xl font-bold mb-2">Welcome to InGuide!</h2>
@@ -20,13 +25,16 @@ import * as path from '@/composables/usePath'
 import * as position from '@/composables/usePositioningSystem'
 import * as poi from '@/composables/usePOI'
 import { useMapInfoStore } from '@/stores/mapInfo'
+import { useUIMenuPanelStore } from '@/stores/uiMenuPanel';
 // vue component
 import SearchBar from '@/components/SearchBar.vue'
 import PopUpWindow from '@/components/PopUpWindow.vue'
 import MenuPanel from '@/components/MenuPanel.vue'
+import SearchResultsView from './panelViews/SearchResultsView.vue'
 
 const showPopup = ref(false)
 const mapInfo = useMapInfoStore()
+const uiStore = useUIMenuPanelStore()
 
 const initPosition = () => {
   position.init()
@@ -43,22 +51,33 @@ const initPosition = () => {
   setInterval(() => {
     // console.log(position.getPredictionResult());
   }, 2000)
-  showPopup.value = false;
+  showPopup.value = false
 }
 
-watch(() => mapInfo.isMapInitialized, (isInitialized) => {
-  if (isInitialized) {
-    console.log('Map is ready, rendering paths and POIs!');
-    path.renderPaths();
-    poi.renderAllPOI();
+watch(
+  () => mapInfo.isMapInitialized,
+  (isInitialized) => {
+    if (isInitialized) {
+      console.log('Map is ready, rendering paths and POIs!')
+      path.renderPaths()
 
-    setTimeout(() => {
-      if (position.isAvailable()) {
-        showPopup.value = true;
-      }
-    }, 1000);
-  }
-}, { immediate: true })
+      const building_id = mapInfo.current_buildingId
+      const floor = mapInfo.current_floor.floor
+      poi.renderPOIs(building_id, floor)
+
+      setTimeout(() => {
+        if (position.isAvailable()) {
+          showPopup.value = true
+        }
+      }, 1000)
+    }
+  },
+  { immediate: true },
+)
+
+watch(() => uiStore.isSearchFocused, () => {
+  uiStore.fullExpand()
+})
 </script>
 
-<style src="../style/MapView.css"></style>
+<style src="@/style/MapView.css"></style>

@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router';
 import PoiService from '@/services/PoiService';
 import type { POI } from '@/types/poi'
@@ -47,6 +47,11 @@ const fetchData = async (id: string) => {
 onMounted(() => {
   fetchData(props.id);
 });
+
+watch(() =>  props.id , () => {
+  poi.value = null
+  fetchData(props.id)
+})
 
 // Build the gallery from poi.images (preferred) or single poi.image (fallback).
 // No repetition: we just show however many exist, capped at 3.

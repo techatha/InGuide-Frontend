@@ -1,5 +1,9 @@
 <template>
-  <div>
+  <div v-if="isLoading">
+    <p>Loading recommendations...</p>
+  </div>
+  <div v-else>
+    <h3 class="panel-title">Recommended Place</h3>
     <PoiCard
       v-for="poi in recommendedPOIs"
       :key="poi.id"
@@ -8,6 +12,7 @@
     />
   </div>
 </template>
+
 
 <script setup lang="ts">
 import PoiCard from '@/components/PoiCard.vue'
@@ -21,12 +26,19 @@ const router = useRouter();
 const mapInfo = useMapInfoStore()
 const recommendedPOIs = ref<POI[]>([])
 
+const isLoading = ref(true);
+
 onMounted(async() => {
   const buildingId = mapInfo.current_buildingId
   // CHANGE TO RECCOMMEND SERVICE LATER (NO ROUTE FOR THAT YET)
   const floor = 3
-  recommendedPOIs.value = await PoiService.getPOIs(buildingId, floor)
-  // console.log(recommendedPOIs)
+  try {
+    recommendedPOIs.value = await PoiService.getPOIs(buildingId, floor);
+  } catch (error) {
+    console.error("Failed to fetch POIs:", error);
+  } finally {
+    isLoading.value = false; 
+  }
 })
 
 function handleViewDetail(poi: POI) {

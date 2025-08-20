@@ -5,9 +5,12 @@ import {
   faDesktop,
   faCircle,
 } from '@fortawesome/free-solid-svg-icons'
-import PoiService from '@/services/mocks/PoiService'
+import PoiService from '@/services/PoiService'
 import { map } from './useMap'
 import L from 'leaflet'
+import router from '@/router'
+import type { POI } from '@/types/poi'
+import { useUIMenuPanelStore } from '@/stores/uiMenuPanel'
 
 const poiIconMap: Record<string, IconDefinition> = {
   'Restroom': faRestroom,
@@ -33,11 +36,14 @@ function createSvgIcon(icon: IconDefinition, size = 18, color = 'white') {
 export function createPOIMarker(
   latlng: [number, number],
   poiType: string,
+  id: string,
   name?: string,
 ) {
   const iconDef = poiIconMap[poiType] || faCircle
   const svgIcon = createSvgIcon(iconDef)
   const color = poiColorMap[poiType] || '#FDA172'
+
+  const uiStore = useUIMenuPanelStore()
 
   const icon = L.divIcon({
     className: 'custom-poi-icon',
@@ -76,9 +82,11 @@ export function createPOIMarker(
 
   const poi = L.marker(latlng, { icon })
 
-  if (name) {
-    poi.bindPopup(name)
-  }
+  poi.on('click', () => {
+    uiStore.showDetail()
+    map.value?.setView(latlng)
+    router.push({ name: 'placeDetail', params: { id } })
+  })
 
   try {
     poi.addTo(map.value as L.Map)
@@ -89,9 +97,9 @@ export function createPOIMarker(
   }
 }
 
-export async function renderAllPOI() {
-  const POIs = await PoiService.getRecommendedPOIs()
+export async function renderPOIs(building_id: string, floor: number) {
+  const POIs = await PoiService.getPOIs(building_id, floor) as POI[]
   POIs.forEach((p) => {
-    createPOIMarker(p.location, p.type, p.name)
+    createPOIMarker(p.location, p.type, p.id,  p.name)
   })
 }
