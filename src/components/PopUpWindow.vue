@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible"
+  <div v-if="props.visible"
      class="popup-overlay">
   <div class="popup-content">
     <button @click="close">✕</button>

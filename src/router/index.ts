@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import SearchBar from '@/components/SearchBar.vue'
-import MenuPanel from '@/components/MenuPanel.vue'
+import MapView from '@/views/MapView.vue'
+import PoiDetail from '@/views/pannelViews/PoiDetailview.vue'
+import RecommendedView from '@/views/pannelViews/RecommendedView.vue'
+
 
 
 const router = createRouter({
@@ -9,12 +11,22 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      components: {
-        searchBar: SearchBar,
-        menuPanel: MenuPanel
-      }
+      component: MapView,
+      children: [
+        {
+          path: '',
+          name: 'recommend',
+          component:RecommendedView,
+        },
+        {
+          path: 'details/:id', // Matches URLs like /place/123
+          name: 'placeDetail',
+          component: PoiDetail,
+          props: true // This passes the route's :id to the PoiDetail component as a prop
+        },
+      ]
     },
-    
+
   ]
 })
 

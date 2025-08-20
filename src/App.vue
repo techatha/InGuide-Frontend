@@ -1,19 +1,13 @@
 <template>
   <div class="app-container">
-    <MapView v-if="isHome" />
-    <router-view name="searchBar" v-if="isHome" />
-    <router-view name="menuPanel" v-if="isHome" />
-    <router-view />
+    <FloorMap/>
+    <RouterView />
   </div>
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
-import { computed} from 'vue'
-// vue components
-import MapView from './views/MapView.vue'
-const route = useRoute()
-const isHome = computed(() => route.name === 'home')
+import {  RouterView } from 'vue-router'
+import FloorMap from './components/FloorMap.vue'
 </script>
 
 <style src="@/style/AppLayout.css"></style>

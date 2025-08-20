@@ -210,3 +210,9 @@ export function rotateToWorldFrame(acc: Acceleration, rotation: RotationRate) {
     z: worldVec.get([2, 0]),
   }
 }
+
+export function isAvailable(): boolean {
+  const isIMU = imu.permission.value != null
+  const isGPS = gps.watcherId.value != null
+  return isIMU && isGPS
+}
