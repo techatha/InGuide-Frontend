@@ -1,9 +1,11 @@
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 import L, { type PolylineOptions } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import mockMap from '@/assets/sample-img.jpg'
 
 export const map = ref<L.Map | null>(null)
+export const poiLayer = L.layerGroup()
+
 const userPosition = L.circleMarker([0, 0], {
   radius: 10, // Radius of the circle
   fillColor: '#278cea', // Fill color
@@ -41,18 +43,19 @@ export async function init(mapContainer: HTMLElement) {
     map.value = L.map(mapContainer, {
       zoomControl: false,
     }).fitBounds(_mapBound)
-    map.value.createPane('userPane').style.zIndex = '999'
+    toRaw(map.value).createPane('userPane').style.zIndex = '999'
     _mapImageOverlay = L.imageOverlay(mockMap, _mapBound)
     _mapImageOverlay.once('load', () => resolve())
     _mapImageOverlay.once('error', (err) => {
       console.error('Failed to load map image', err)
       reject(new Error('Failed to load map image'))
     })
-    _mapImageOverlay.addTo(map.value as L.Map)
-    userPosition.addTo(map.value as L.Map)
-    headingLine.addTo(map.value as L.Map)
+    _mapImageOverlay.addTo(toRaw(map.value) as L.Map)
+    userPosition.addTo(toRaw(map.value) as L.Map)
+    headingLine.addTo(toRaw(map.value) as L.Map)
     // debug position
-    userDebugPosition.addTo(map.value as L.Map)
+    userDebugPosition.addTo(toRaw(map.value) as L.Map)
+    poiLayer.addTo(toRaw(map.value) as L.Map)
     console.log('map at 0,0')
   })
 }
@@ -101,7 +104,7 @@ export function setWalkablePath(
   style: PolylineOptions,
 ) {
   _mapWalkablePath = L.polyline(latlng, style)
-  _mapWalkablePath.addTo(map.value as L.Map)
+  _mapWalkablePath.addTo(toRaw(map.value) as L.Map)
 }
 
 export async function changeFloorPlan(newImageUrl: string) {

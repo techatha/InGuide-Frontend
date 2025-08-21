@@ -5,12 +5,13 @@ import {
   faDesktop,
   faCircle,
 } from '@fortawesome/free-solid-svg-icons'
-import PoiService from '@/services/PoiService'
-import { map } from './useMap'
+
+import { map, poiLayer } from './useMap'
 import L from 'leaflet'
 import router from '@/router'
 import type { POI } from '@/types/poi'
 import { useUIMenuPanelStore } from '@/stores/uiMenuPanel'
+import { toRaw } from 'vue'
 
 const poiIconMap: Record<string, IconDefinition> = {
   'Restroom': faRestroom,
@@ -88,18 +89,20 @@ export function createPOIMarker(
     router.push({ name: 'placeDetail', params: { id } })
   })
 
-  try {
-    poi.addTo(map.value as L.Map)
-    return true
-  } catch (error) {
-    console.log(error)
-    return false
-  }
+  return poi
 }
 
-export async function renderPOIs(building_id: string, floor: number) {
-  const POIs = await PoiService.getPOIs(building_id, floor) as POI[]
+export function renderPOIs(POIs: POI[]) {
   POIs.forEach((p) => {
-    createPOIMarker(p.location, p.type, p.id,  p.name)
+    const poi = createPOIMarker(p.location, p.type, p.id,  p.name)
+    try {
+      poi.addTo(toRaw(poiLayer))
+    } catch (e) {
+      console.log(e)
+    }
   })
+}
+
+export function removePOIs() {
+  toRaw(poiLayer).clearLayers();
 }

@@ -1,4 +1,3 @@
-import { useMapInfoStore } from '@/stores/mapInfo';
 import axios from 'axios'
 
 const httpClient = axios.create({
@@ -18,9 +17,6 @@ export async function getFloors(buildingId: string) {
     });
 
     const floors = response.data;
-    const mapInfo = useMapInfoStore();
-
-    mapInfo.loadFloors(floors);
 
     // ✅ preload images so they are cached
     floors.forEach((floor: { floor_plan_url: string }) => {
@@ -28,7 +24,7 @@ export async function getFloors(buildingId: string) {
       img.src = floor.floor_plan_url;
     });
 
-    return response.data;
+    return floors;
   } catch (err) {
     console.error(`Error getting floors from ${buildingId}...`, err);
     throw err;

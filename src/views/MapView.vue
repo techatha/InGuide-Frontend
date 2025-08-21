@@ -61,9 +61,8 @@ watch(
       console.log('Map is ready, rendering paths and POIs!')
       path.renderPaths()
 
-      const building_id = mapInfo.current_buildingId
-      const floor = mapInfo.current_floor.floor
-      poi.renderPOIs(building_id, floor)
+      const POIs = mapInfo.POIs
+      poi.renderPOIs(POIs)
 
       setTimeout(() => {
         if (position.isAvailable()) {
