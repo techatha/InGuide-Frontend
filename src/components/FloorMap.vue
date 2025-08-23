@@ -43,7 +43,6 @@ const mapContainer = ref<HTMLElement | null>(null)
 const changeFloorPlan = async (floor: Floor) => {
   const build_id = mapInfo.current_buildingId
   const newPOIs = await PoiService.getPOIs(build_id, floor.floor)
-  
   mapInfo.loadPOIs(newPOIs)
   mapInfo.current_floor = floor
 }
@@ -66,6 +65,10 @@ onMounted(async () => {
 watch(() => mapInfo.POIs, (pois) =>{
   poi.removePOIs()
   poi.renderPOIs(pois)
+})
+
+watch(() => mapInfo.current_floor, () => {
+  map.changeFloorPlan(mapInfo.current_floor.floor_plan_url)
 })
 </script>
 

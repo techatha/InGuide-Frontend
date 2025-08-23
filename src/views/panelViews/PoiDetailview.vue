@@ -11,6 +11,7 @@
 
     <div class="subtitle">
       {{ poi.type }}
+      <br>Floor: {{ poi.floor }}
       <button class="navigate" @click="console.log('start nav!')">Navigate</button>
     </div>
 
