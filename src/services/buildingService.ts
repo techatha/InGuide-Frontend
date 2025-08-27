@@ -10,10 +10,7 @@ const httpClient = axios.create({
 
 export async function getFloors(buildingId: string) {
   try {
-    const response = await httpClient.get('/floors', {
-      params: {
-        building_id: buildingId,
-      }
+    const response = await httpClient.get(`/floors/${ buildingId }`, {
     });
 
     const floors = response.data;
