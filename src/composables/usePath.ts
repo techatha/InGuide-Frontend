@@ -1,7 +1,8 @@
 import * as turf from '@turf/turf'
 import type { Feature, GeoJsonProperties, LineString, Position } from 'geojson'
-import * as pathService from '@/services/mocks/PathService'
+import pathService from '@/services/PathService'
 import * as map from '@/composables/useMap'
+import { toRaw } from 'vue'
 
 const availablePath = {
   color: 'orange',
@@ -9,9 +10,10 @@ const availablePath = {
   smoothFactor: 1,
 }
 
-export async function renderPaths() {
+export async function renderPaths(buildingId: string, floorId: string) {
   try {
-    const graph = await pathService.getPaths()
+    const graph = await pathService.loadPath(buildingId, floorId)
+    toRaw(map).clearWalkablePaths()
     graph.adjacencyList.forEach((edges, startNodeId) => {
       const startNode = graph.nodes.get(startNodeId)
       edges.forEach((edge) => {
@@ -21,7 +23,7 @@ export async function renderPaths() {
           [number, number],
           [number, number],
         ]
-        map.setWalkablePath(path, availablePath)
+        toRaw(map).setWalkablePath(path, availablePath)
       })
     })
   } catch (error) {
@@ -29,8 +31,8 @@ export async function renderPaths() {
   }
 }
 
-export async function snapToPath(userPos: Position): Promise<[number, number] | null> {
-  const lineSegments = await buildLineStrings()
+export async function snapToPath(buildingId: string, floorId: string, userPos: Position): Promise<[number, number] | null> {
+  const lineSegments = await buildLineStrings(buildingId, floorId)
   userPos = switchLatLng(userPos)
 
   // console.log(lineSegments)
@@ -54,8 +56,8 @@ export async function snapToPath(userPos: Position): Promise<[number, number] | 
   return switchLatLng(closest) as [number, number]
 }
 
-async function buildLineStrings() {
-  const graph = await pathService.getPaths()
+async function buildLineStrings(buildingId: string, floorId: string) {
+  const graph = await pathService.loadPath(buildingId, floorId)
   const segments: Feature<LineString, GeoJsonProperties>[] = []
   const seen = new Set<string>()
 

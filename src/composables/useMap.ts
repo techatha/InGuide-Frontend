@@ -5,6 +5,7 @@ import mockMap from '@/assets/sample-img.jpg'
 
 export const map = ref<L.Map | null>(null)
 export const poiLayer = L.layerGroup()
+export const pathLayer = L.layerGroup()
 
 const userPosition = L.circleMarker([0, 0], {
   radius: 10, // Radius of the circle
@@ -36,7 +37,6 @@ const userDebugPosition = L.circleMarker([0, 0], {
 
 let _mapBound = L.latLngBounds([0, 1], [1, 0])
 let _mapImageOverlay: L.ImageOverlay | null = null
-let _mapWalkablePath: L.Polyline | null = null
 
 export async function init(mapContainer: HTMLElement) {
   return new Promise<void>((resolve, reject) => {
@@ -56,15 +56,16 @@ export async function init(mapContainer: HTMLElement) {
     // debug position
     userDebugPosition.addTo(toRaw(map.value) as L.Map)
     poiLayer.addTo(toRaw(map.value) as L.Map)
+    pathLayer.addTo(toRaw(map.value) as L.Map)
     console.log('map at 0,0')
   })
 }
 
 export function setMapBound(sw: [number, number], ne: [number, number]) {
   _mapBound = L.latLngBounds(sw, ne)
-  map.value?.fitBounds(_mapBound)
+  toRaw(map.value)?.fitBounds(_mapBound)
   _mapImageOverlay?.setBounds(_mapBound)
-  map.value?.setView(sw)
+  toRaw(map.value)?.setView(sw)
 }
 
 export function setMapOverlay(filepath: string) {
@@ -103,8 +104,12 @@ export function setWalkablePath(
   latlng: [[number, number], [number, number]],
   style: PolylineOptions,
 ) {
-  _mapWalkablePath = L.polyline(latlng, style)
-  _mapWalkablePath.addTo(toRaw(map.value) as L.Map)
+  const newPath = L.polyline(latlng, style)
+  newPath.addTo(pathLayer)
+}
+
+export function clearWalkablePaths() {
+  pathLayer.clearLayers()
 }
 
 export async function changeFloorPlan(newImageUrl: string) {

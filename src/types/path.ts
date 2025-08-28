@@ -15,3 +15,8 @@ export interface NavigationGraph {
   adjacencyList: Map<string, MapEdge[]>;
 }
 
+export interface JSONNavigationGraph {
+  nodes: MapNode[];
+  adjacencyList: Record<string, MapEdge[]>;
+}
+

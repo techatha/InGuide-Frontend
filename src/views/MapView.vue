@@ -42,7 +42,7 @@ const initPosition = () => {
     // console.log("predicted: ", position.getPredictionResult())
     // console.log("read position: ", position.getPosition())
     const userPos = position.getPosition()
-    const snappedPos = await path.snapToPath(userPos)
+    const snappedPos = await path.snapToPath(mapInfo.current_buildingId, mapInfo.current_floor.id, userPos)
     const heading = position.getRadHeading()
     // console.log("snapped: ", snappedPos)
     map.setUserPosition(snappedPos as [number, number], heading)
@@ -59,7 +59,7 @@ watch(
   (isInitialized) => {
     if (isInitialized) {
       console.log('Map is ready, rendering paths and POIs!')
-      path.renderPaths()
+      path.renderPaths(mapInfo.current_buildingId, mapInfo.current_floor.id)
 
       const POIs = mapInfo.POIs
       poi.renderPOIs(POIs)

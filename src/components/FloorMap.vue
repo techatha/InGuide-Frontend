@@ -28,6 +28,7 @@ import * as map from '@/composables/useMap'
 import type { Floor } from '@/types/floor'
 import type { POI } from '@/types/poi'
 import * as poi from '@/composables/usePOI'
+import { renderPaths } from '@/composables/usePath'
 // vue component
 
 const mapInfo = useMapInfoStore()
@@ -44,6 +45,7 @@ const changeFloorPlan = async (floor: Floor) => {
   const build_id = mapInfo.current_buildingId
   const newPOIs = await PoiService.getPOIs(build_id, floor.floor)
   mapInfo.loadPOIs(newPOIs)
+  renderPaths(build_id, floor.id)
   mapInfo.current_floor = floor
 }
 
