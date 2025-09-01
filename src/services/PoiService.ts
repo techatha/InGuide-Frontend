@@ -14,18 +14,13 @@ const httpClient = axios.create({
  * @param floor specify a floor of this building to retrieve POIs.
  * @returns A Promise that resolves to the list of POIs on the selected floor of the building.
  */
-async function getPOIs(buildingId: string, floor: number) {
+async function getPOIs(buildingId: string, floorId: string) {
   try {
-    const response = await httpClient.get('/POIs', {
-      params: {
-        building_id: buildingId,
-        floor: floor
-      }
-    });
+    const response = await httpClient.get(`/POIs/${buildingId}/${floorId}`);
 
     return response.data;
   } catch (err) {
-    console.error(`Error getting POIs on floor ${floor}...`, err);
+    console.error(`Error getting POIs on floor ${floorId}...`, err);
     throw err;
   }
 }
@@ -38,12 +33,7 @@ async function getPOIs(buildingId: string, floor: number) {
  */
 async function getPOIById(buildingId: string, poiId: string) {
   try {
-    const response = await httpClient.get('/POIs/POI', {
-      params: {
-        building_id: buildingId,
-        poi_id: poiId
-      }
-    });
+    const response = await httpClient.get(`/POIs/POI_info/${buildingId}/${poiId}`);
 
     return response.data;
   } catch (err) {

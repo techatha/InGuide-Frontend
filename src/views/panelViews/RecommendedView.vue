@@ -31,13 +31,13 @@ const isLoading = ref(true);
 onMounted(async() => {
   const buildingId = mapInfo.current_buildingId
   // CHANGE TO RECCOMMEND SERVICE LATER (NO ROUTE FOR THAT YET)
-  const floor = 3
+  const floorId = 'F2xuuVTwLQ88wL0ebAS5'
   try {
-    recommendedPOIs.value = await PoiService.getPOIs(buildingId, floor);
+    recommendedPOIs.value = await PoiService.getPOIs(buildingId, floorId);
   } catch (error) {
     console.error("Failed to fetch POIs:", error);
   } finally {
-    isLoading.value = false; 
+    isLoading.value = false;
   }
 })
 

@@ -43,7 +43,7 @@ const mapContainer = ref<HTMLElement | null>(null)
 
 const changeFloorPlan = async (floor: Floor) => {
   const build_id = mapInfo.current_buildingId
-  const newPOIs = await PoiService.getPOIs(build_id, floor.floor)
+  const newPOIs = await PoiService.getPOIs(build_id, floor.id)
   mapInfo.loadPOIs(newPOIs)
   renderPaths(build_id, floor.id)
   mapInfo.current_floor = floor
@@ -54,7 +54,7 @@ onMounted(async () => {
   const floors: Floor[] = await getFloors(build_id)
   mapInfo.loadFloors(floors)
   mapInfo.current_floor = floors[0]
-  const POIs: POI[] = await PoiService.getPOIs(build_id, floors[0].floor)
+  const POIs: POI[] = await PoiService.getPOIs(build_id, floors[0].id)
   mapInfo.loadPOIs(POIs)
   await map.init(mapContainer.value as HTMLElement)
   await map.changeFloorPlan(mapInfo.current_floor.floor_plan_url)
