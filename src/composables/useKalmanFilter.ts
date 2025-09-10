@@ -4,121 +4,127 @@ import * as math from 'mathjs'
 import type { Acceleration } from '@/types/IMU'
 import type { Probability } from '@/types/prediction'
 import { ExtendedKalmanFilter } from '@/utils/KalmanFilter'
+import { coordinatesTransform } from '@/utils/CoordinateTransformer'
+import { DistancePredictor } from '@/utils/DistancePredictor'
 
-const EARTH_RADIUS = 6378137 //appeox meter
-const lat0 = ref<number | null>(null)
-const lng0 = ref<number | null>(null)
 export type Mode = 'forward' | 'turn' | 'halt'
 
-export const state = ref<number | null>(null)
-const kf = ref<ExtendedKalmanFilter | null>(null)
-const Q = ref<math.Matrix | null>(null)
-const maxAccel = 5.0;
-const maxVelocity = 3.0;
-const dampingFactor = 0.98;
+export function useKalmanFilter() {
+  const kf = ref<ExtendedKalmanFilter | null>(null)
+  const Q = ref<math.Matrix | null>(null)
+  const maxAccel = 5.0
+  let coordsTransform = coordinatesTransform()
+  const distancePredictor = DistancePredictor()
 
-export function init(
-  initLat: number,
-  initLng: number,
-  orien: number,
-  processNoise: number = 0.001,
-): boolean {
-  lat0.value = initLat
-  lng0.value = initLng
-  kf.value = new ExtendedKalmanFilter(latLngToENU(initLat, initLng), orien)
-  Q.value = math.multiply(math.diag([1, 1, 0.1, 1]), processNoise)
-  if (kf.value == null) {
-    return false
+  function init(
+    initLat: number,
+    initLng: number,
+    orien: number,
+    processNoise: number = 0.001
+  ) {
+
+    const ENUcoords = coordsTransform.latLngToENU(initLat, initLng)
+
+    const initStates = [ENUcoords[0], ENUcoords[1], 0, orien] // states (x) : [east, north, velocity, heading_yaw]
+    const p = math.diag([1, 1, 2, 0.1])
+    const h = math.matrix([
+      [1,0,0,0],
+      [0,1,0,0],
+      [0,0,0,1]
+    ])
+    const r = math.diag([5, 5, 0.05])
+
+    kf.value = new ExtendedKalmanFilter(initStates, p, h, r)
+    Q.value = math.multiply(math.diag([1, 1, 0.1, 1]), processNoise)
+    coordsTransform = coordinatesTransform(initLat, initLng)
+
   }
-  return true
-}
 
-export function isInitialized(): boolean {
-  return kf.value !== null && kf.value !== undefined
-}
-
-export function predict(
-  mode: number,
-  acc: Acceleration,
-  dt: number,
-  prob: Probability,
-  gyroYawRateRad: number,
-): [number, number] {
-  const x_n0 = kf.value?.x as math.Matrix
-  const east_n0 = x_n0.get([0, 0])
-  const nort_n0 = x_n0.get([1, 0])
-  const velo_n0 = x_n0.get([2, 0])
-  const head_n0 = x_n0.get([3, 0])
-
-  const acc_x = acc.x as number
-  const acc_y = acc.y as number
-
-  const forward_x = Math.sin(head_n0)
-  const forward_y = Math.cos(head_n0)
-
-  const accel = (acc_x * forward_x) + (acc_y * forward_y)
-  const capped_accel = Math.min(accel, maxAccel);
-
-  let result: any
-  switch (mode) {
-    case 1:
-      let kick_boost_acc = velo_n0
-      if (velo_n0 < 0.5) {
-        kick_boost_acc = 0.7
-      }
-      result = predictForward(east_n0, nort_n0, kick_boost_acc, head_n0, capped_accel, dt)
-      break
-    case 2:
-      result = predictTurn(east_n0, nort_n0, velo_n0, head_n0, capped_accel, dt)
-      break
-    case 0:
-      result = predictHalt(east_n0, nort_n0)
-      break
+  function isInitialized(): boolean {
+    return kf.value !== null && kf.value !== undefined
   }
-  let head_n1 = (head_n0 + gyroYawRateRad * dt) % (2 * Math.PI)
-  if (head_n1 < 0) head_n1 += 2 * Math.PI
-  console.log('head_n1: ', radToDeg(head_n1))
-  const x = math.matrix([[result.e], [result.n], [result.v], [head_n1]])
-  const F = blendF(velo_n0, head_n0, dt, prob)
-  const Q_blend = blendQ(prob)
-  kf.value?.predict(x, F, Q_blend)
-  return getLatLng()
-}
 
-export function update(lat: number, lng: number, heading: number): [number, number] {
-  const [e, n] = latLngToENU(lat, lng)
-  const z = math.matrix([[e], [n], [heading]])
-  kf.value?.update(z)
-  return getLatLng()
-}
+  function predict(
+    mode: number,
+    acc: Acceleration,
+    dt: number,
+    prob: Probability,
+    gyroYawRateRad: number,
+  ): [number, number] {
+    const x_n0 = kf.value?.x as math.Matrix
+    const east_n0 = x_n0.get([0, 0])
+    const nort_n0 = x_n0.get([1, 0])
+    const velo_n0 = x_n0.get([2, 0])
+    const head_n0 = x_n0.get([3, 0])
 
-export function getLatLng(): [number, number] {
-  const result = kf.value?.getState() as [number, number]
-  const latLng = ENUToLatLng(result[0], result[1])
-  return latLng
-}
+    const acc_x = acc.x as number
+    const acc_y = acc.y as number
 
-export function getRadHeading(): number {
-  const result = kf.value?.x as math.Matrix
-  return result.get([3, 0])
-}
+    const forward_x = Math.sin(head_n0)
+    const forward_y = Math.cos(head_n0)
 
-function latLngToENU(lat: number, lng: number): [number, number] {
-  const lat0Rad = Math.cos(((lat0.value as number) * Math.PI) / 180)
-  const dLat = ((lat - (lat0.value as number)) * Math.PI) / 180
-  const dLng = ((lng - (lng0.value as number)) * Math.PI) / 180
-  const nort = dLat * EARTH_RADIUS
-  const east = dLng * EARTH_RADIUS * lat0Rad
-  return [east, nort]
-}
+    const accel = acc_x * forward_x + acc_y * forward_y
+    const capped_accel = Math.min(accel, maxAccel)
 
-function ENUToLatLng(east: number, north: number): [number, number] {
-  const lat0Rad = Math.cos(((lat0.value as number) * Math.PI) / 180)
-  const dLat = north / EARTH_RADIUS
-  const dLng = east / (EARTH_RADIUS * lat0Rad)
-  const lat = (lat0.value as number) + (dLat * 180) / Math.PI
-  const lng = (lng0.value as number) + (dLng * 180) / Math.PI
-  return [lat, lng]
+    let result: any
+    switch (mode) {
+      case 1:
+        let kick_boost_acc = velo_n0
+        if (velo_n0 < 0.5) {
+          kick_boost_acc = 0.7
+        }
+        result = distancePredictor.forward(
+          east_n0,
+          nort_n0,
+          kick_boost_acc,
+          head_n0,
+          capped_accel,
+          dt,
+        )
+        break
+      case 2:
+        result = distancePredictor.turn(east_n0, nort_n0, velo_n0, head_n0, capped_accel, dt)
+        break
+      case 0:
+        result = distancePredictor.halt(east_n0, nort_n0)
+        break
+    }
+    let head_n1 = (head_n0 + gyroYawRateRad * dt) % (2 * Math.PI)
+    if (head_n1 < 0) head_n1 += 2 * Math.PI
+    console.log('head_n1: ', radToDeg(head_n1))
+    const x = math.matrix([[result.e], [result.n], [result.v], [head_n1]])
+    const F = blendF(velo_n0, head_n0, dt, prob)
+    const Q_blend = blendQ(prob)
+    kf.value?.predict( F, Q_blend, x)
+    return getLatLng()
+  }
+
+  function update(lat: number, lng: number, heading: number): [number, number] {
+    const [e, n] = coordsTransform.latLngToENU(lat, lng)
+    const z = math.matrix([[e], [n], [heading]])
+    kf.value?.update(z)
+    return getLatLng()
+  }
+
+  function getLatLng(): [number, number] {
+    const result = kf.value?.getState() as [number, number]
+    const latLng = coordsTransform.ENUToLatLng(result[0], result[1])
+    return latLng
+  }
+
+  function getRadHeading(): number {
+    const result = kf.value?.x as math.Matrix
+    return result.get([3, 0])
+  }
+
+  return {
+    init,
+    isInitialized,
+    predict,
+    update,
+    getLatLng,
+    getRadHeading,
+  }
 }
 
 function blendF(v: number, yaw: number, dt: number, prob: Probability) {
@@ -142,30 +148,6 @@ function blendQ(prob: Probability): math.Matrix {
     math.multiply(QTurn, prob.Turn),
     math.multiply(QHalt, prob.Halt),
   )
-}
-
-export function predictForward(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {
-  const east_n1 = e + v * Math.sin(yaw) * dt
-  const nort_n1 = n + v * Math.cos(yaw) * dt
-  const velo_n1 = Math.min((v + acc * dt) * dampingFactor, maxVelocity);
-  console.log("Forward (m/s) => ", velo_n1)
-  return { e: east_n1, n: nort_n1, v: velo_n1 }
-}
-
-export function predictTurn(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {
-  const east_n1 = e + v * Math.sin(yaw) * dt
-  const nort_n1 = n + v * Math.cos(yaw) * dt
-  const velo_n1 = Math.min((v + acc * dt) * dampingFactor, maxVelocity);
-  console.log("Turn (m/s) => ", velo_n1)
-  return { e: east_n1, n: nort_n1, v: velo_n1 }
-}
-
-export function predictHalt(e: number, n: number) {
-  const east_n1 = e
-  const nort_n1 = n
-  const velo_n1 = 0
-  console.log("Halt (m/s) => ", velo_n1)
-  return { e: east_n1, n: nort_n1, v: velo_n1 }
 }
 
 function jacobianFForward(v: number, yaw: number, dt: number): math.Matrix {
@@ -217,5 +199,5 @@ function jacobianFHalt(): math.Matrix {
 }
 
 function radToDeg(rad: number): number {
-  return (rad * 180) / Math.PI;
+  return (rad * 180) / Math.PI
 }

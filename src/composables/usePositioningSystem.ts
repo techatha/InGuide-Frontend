@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import { useGeolocation } from '@/composables/useGeolocation'
 import { useIMU } from '@/composables/useIMU'
 import { useDeviceOrientation } from '@/composables/useDeviceOrientation'
-import * as kf from '@/composables/useKalmanFilter'
+import { useKalmanFilter } from '@/composables/useKalmanFilter'
 import type { Acceleration, RotationRate, IMUData } from '@/types/IMU'
 import type { Data, PredictionPayload, PredictionResponse, Probability } from '@/types/prediction'
 import { submitPayload } from '@/services/PredictionService'
@@ -12,6 +12,7 @@ import { rotateToWorldFrame } from '@/utils/RotateToWorldFrame'
 const gps = useGeolocation()
 const imu = useIMU()
 const orien = useDeviceOrientation()
+const kf = useKalmanFilter()
 
 const latestGPSLat = ref<number | null>(null)
 const latestGPSLng = ref<number | null>(null)

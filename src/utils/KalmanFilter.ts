@@ -7,41 +7,48 @@ export class ExtendedKalmanFilter {
   R: math.Matrix
   I: math.Matrix
 
-  constructor(initialPosition: [number, number], orien: number) {
-    // states (x) : [east, north, velocity, heading_yaw]
-    this.x = math.matrix([[initialPosition[0]], [initialPosition[1]], [0], [orien]])
-    this.P = math.diag([1, 1, 2, 0.1]) as math.Matrix
-    this.H = math.matrix([
-      [1, 0, 0, 0], // measure east
-      [0, 1, 0, 0], // measure north
-      [0, 0, 0, 1], // measure heading
-    ])
-    this.R = math.diag([100, 100, 0.01]) as math.Matrix // measurement noise for [east, north, heading]
-    this.I = math.identity(4) as math.Matrix
+  constructor(
+    initialState: number[], // [east, north, velocity, heading]
+    P: math.Matrix,
+    H: math.Matrix,
+    R: math.Matrix,
+  ) {
+    this.x = math.matrix(initialState.map((v) => [v]))
+    this.P = P
+    this.H = H
+    this.R = R
+    this.I = math.identity(initialState.length) as math.Matrix
   }
 
-  predict(x: math.Matrix, F: math.Matrix, Q: math.Matrix) {
-    this.x = x
-    this.P = math.multiply(math.multiply(F, this.P), math.transpose(F))
-    this.P = math.add(this.P, Q)
+  predict(F: math.Matrix, Q: math.Matrix, x?: math.Matrix) {
+    if (x) {
+      this.x = x
+    } else {
+      this.x = math.multiply(F, this.x) as math.Matrix
+    }
+    this.P = math.add(math.multiply(math.multiply(F, this.P), math.transpose(F)), Q) as math.Matrix
   }
 
   update(z: math.Matrix) {
-    const y = math.subtract(z, math.multiply(this.H, this.x))
-    const S = math.add(math.multiply(math.multiply(this.H, this.P), math.transpose(this.H)), this.R)
-    // Kalman Gain (K)
-    const K = math.multiply(math.multiply(this.P, math.transpose(this.H)), math.inv(S))
-    const I_KH = math.subtract(this.I, math.multiply(K, this.H))
+    const y = math.subtract(z, math.multiply(this.H, this.x)) as math.Matrix
+    const S = math.add(
+      math.multiply(math.multiply(this.H, this.P), math.transpose(this.H)),
+      this.R,
+    ) as math.Matrix
+    const K = math.multiply(
+      math.multiply(this.P, math.transpose(this.H)),
+      math.inv(S),
+    ) as math.Matrix
 
-    this.x = math.add(this.x, math.multiply(K, y))
-    this.P = math.add(
-      math.multiply(math.multiply(I_KH, this.P), math.transpose(I_KH)),
-      math.multiply(math.multiply(K, this.R), math.transpose(K)),
-    )
+    this.x = math.add(this.x, math.multiply(K, y)) as math.Matrix
+    this.P = math.multiply(math.subtract(this.I, math.multiply(K, this.H)), this.P) as math.Matrix
   }
 
-  getState(): [number, number] {
-    // console.log("Filtered => ", this.x.get([3, 0]))
-    return [this.x.get([0, 0]), this.x.get([1, 0])]
+  setState(x: math.Matrix) {
+    this.x = x
+  }
+
+  getState(): number[] {
+    return (this.x.toArray() as number[][]).flat()
   }
 }
