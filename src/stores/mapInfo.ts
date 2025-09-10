@@ -4,7 +4,7 @@ import type { Floor } from '@/types/floor';
 import type { POI } from '@/types/poi';
 
 export const useMapInfoStore = defineStore('mapInfo', () => {
-  const dummyFloor = {floor: 1, floor_plan_url: '/src/assets/sample-img.jpg', id: 'sampleFloor'};
+  const dummyFloor = {floor: 3, floor_plan_url: '/src/assets/sample-img.jpg', id: 'sampleFloor'};
 
   const isMapInitialized = ref(false);
   const current_buildingId = ref<string>('wcnWozOmfZc2zBXxgm1s');
