@@ -1,15 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ref, watch } from 'vue'
-import * as gps from '@/composables/useGeolocation'
-import * as imu from '@/composables/useIMU'
-import * as orien from '@/composables/useDeviceOrientation'
+import { useGeolocation } from '@/composables/useGeolocation'
+import { useIMU } from '@/composables/useIMU'
+import { useDeviceOrientation } from '@/composables/useDeviceOrientation'
 import * as kf from '@/composables/useKalmanFilter'
 import type { Acceleration, RotationRate, IMUData } from '@/types/IMU'
 import type { Data, PredictionPayload, PredictionResponse, Probability } from '@/types/prediction'
 import { submitPayload } from '@/services/PredictionService'
-import { create, all } from 'mathjs'
+import { rotateToWorldFrame } from '@/utils/RotateToWorldFrame'
 
-const math = create(all)
+const gps = useGeolocation()
+const imu = useIMU()
+const orien = useDeviceOrientation()
 
 const latestGPSLat = ref<number | null>(null)
 const latestGPSLng = ref<number | null>(null)
@@ -44,16 +46,17 @@ export async function init(
       latestGPSLng.value = lng
       if (
         !kf.isInitialized() &&
-        orien.isAvailable() &&
+        orien &&
         latestGPSLat.value != null &&
         latestGPSLng.value != null
       ) {
-        kf.init(lat, lng, (orien.getCurrentHeading() * Math.PI) / 180)
+        const heading = orien.heading.value?  orien.heading.value : 0
+        kf.init(lat, lng, (heading * Math.PI) / 180)
       }
     }
   })
 
-  watch(orien.currentHeading, (orien) => {
+  watch(orien.heading, (orien) => {
     if(latestGPSLat.value !== null && latestGPSLng.value !== null && orien !== null){
       kf.update(latestGPSLat.value, latestGPSLng.value, (orien * Math.PI) / 180)
     }
@@ -164,54 +167,6 @@ function pushDataIntoWindowFame() {
 
   if (windowData.value.length > dataSize) {
     windowData.value.shift()
-  }
-}
-
-
-// world-frame transform function
-export function rotateToWorldFrame(acc: Acceleration, rotation: RotationRate) {
-  // alpha = yaw (rotationRate.alpha)
-  // beta = pitch (rotationRate.beta)
-  // gamma = roll (rotationRate.gamma)
-
-  if (rotation.alpha == null || rotation.beta == null || rotation.gamma == null) {
-    console.warn('Rotation values are null, skipping transform')
-    return acc // fallback: return raw acceleration
-  }
-  if (acc.x == null || acc.y == null || acc.z == null) {
-    console.warn('Acceleration values are null, skipping transform')
-    return acc // fallback: return raw acceleration
-  }
-
-  const yaw = (rotation?.alpha * Math.PI) / 180
-  const pitch = (rotation.beta * Math.PI) / 180
-  const roll = (rotation.gamma * Math.PI) / 180
-
-  // Rotation order: ZYX (yaw → pitch → roll)
-  const Rz = math.matrix([
-    [Math.cos(yaw), -Math.sin(yaw), 0],
-    [Math.sin(yaw), Math.cos(yaw), 0],
-    [0, 0, 1],
-  ])
-  const Ry = math.matrix([
-    [Math.cos(pitch), 0, Math.sin(pitch)],
-    [0, 1, 0],
-    [-Math.sin(pitch), 0, Math.cos(pitch)],
-  ])
-  const Rx = math.matrix([
-    [1, 0, 0],
-    [0, Math.cos(roll), -Math.sin(roll)],
-    [0, Math.sin(roll), Math.cos(roll)],
-  ])
-
-  const rotationMatrix = math.multiply(Rz, Ry, Rx)
-  const accVec = math.matrix([[acc.x], [acc.y], [acc.z]])
-
-  const worldVec = math.multiply(rotationMatrix, accVec)
-  return {
-    x: worldVec.get([0, 0]),
-    y: worldVec.get([1, 0]),
-    z: worldVec.get([2, 0]),
   }
 }
 
