@@ -27,7 +27,7 @@ import { useMapInfoStore } from '@/stores/mapInfo'
 import { useMap } from '@/composables/useMap'
 import type { Floor } from '@/types/floor'
 import type { POI } from '@/types/poi'
-import * as poi from '@/composables/usePOI'
+import { usePOI } from '@/composables/usePOI'
 import L from 'leaflet'
 import { usePath } from '@/composables/usePath'
 
@@ -35,21 +35,9 @@ const map = ref<L.Map | null>(null)
 const poiLayer = L.layerGroup()
 const pathLayer = L.layerGroup()
 
-const {
-  init,
-  setMapBound,
-  setView,
-  changeImageOverlay,
-} = useMap(map as Ref)
-
-const {
-  renderPaths,
-} = usePath(map as Ref, pathLayer)
-
-const {
-  removePOIs,
-  renderPOIs
-} = poi.usePOI(map as Ref, poiLayer)
+const mapDisplay = useMap(map as Ref)
+const path = usePath(map as Ref, pathLayer)
+const poi = usePOI(map as Ref, poiLayer)
 
 const mapInfo = useMapInfoStore()
 // this is setup for test
@@ -65,7 +53,7 @@ const changeFloorPlan = async (floor: Floor) => {
   const build_id = mapInfo.current_buildingId
   const newPOIs = await PoiService.getPOIs(build_id, floor.id)
   mapInfo.loadPOIs(newPOIs)
-  renderPaths(build_id, floor.id)
+  path.renderPaths(build_id, floor.id)
   mapInfo.current_floor = floor
 }
 
@@ -76,10 +64,10 @@ onMounted(async () => {
   mapInfo.current_floor = floors[0]
   const POIs: POI[] = await PoiService.getPOIs(build_id, floors[0].id)
   mapInfo.loadPOIs(POIs)
-  await init(mapContainer.value as HTMLElement, poiLayer, pathLayer)
-  await changeImageOverlay(mapInfo.current_floor.floor_plan_url)
-  setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
-  setView(bounds[0] as [number, number])
+  await mapDisplay.init(mapContainer.value as HTMLElement, poiLayer, pathLayer)
+  await mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url)
+  mapDisplay.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
+  mapDisplay.setView(bounds[0] as [number, number])
 
   mapInfo.setMapInitialized(true)
 })
@@ -87,15 +75,40 @@ onMounted(async () => {
 watch(
   () => mapInfo.POIs,
   (pois) => {
-    removePOIs()
-    renderPOIs(pois)
+    poi.removePOIs()
+    poi.renderPOIs(pois)
   },
 )
 
 watch(
   () => mapInfo.current_floor,
   () => {
-    changeImageOverlay(mapInfo.current_floor.floor_plan_url)
+    mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url)
   },
 )
+
+// Define Expose Functions
+async function snapToPath(buildingId: string, floorId: string, position: [number, number]) {
+  await path.snapToPath(buildingId, floorId, position)
+}
+function setUserPosition(newLatLng: [number, number], headingRad: number){
+  mapDisplay.setUserPosition(newLatLng, headingRad)
+}
+function setUserDebugPosition(newLatLng: [number, number]) {
+  mapDisplay.setUserDebugPosition(newLatLng)
+}
+function renderPaths(buildingId: string, floorId: string) {
+  path.renderPaths(buildingId, floorId)
+}
+function renderPOIs(pois: POI[]) {
+  poi.renderPOIs(pois)
+}
+
+defineExpose ({
+  snapToPath,
+  setUserPosition,
+  setUserDebugPosition,
+  renderPaths,
+  renderPOIs,
+})
 </script>

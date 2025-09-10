@@ -7,8 +7,9 @@
 
 <script setup lang="ts">
 import { defineProps } from 'vue';
-const props = defineProps<{
+defineProps<{
   label: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon: any
   colorClass: string
 }>()

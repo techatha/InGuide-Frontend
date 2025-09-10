@@ -20,10 +20,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import * as map from '@/composables/useMap'
-import * as path from '@/composables/usePath'
 import * as position from '@/composables/usePositioningSystem'
-import * as poi from '@/composables/usePOI'
 import { useMapInfoStore } from '@/stores/mapInfo'
 import { useUIMenuPanelStore } from '@/stores/uiMenuPanel'
 // vue component
@@ -36,17 +33,22 @@ const showPopup = ref(false)
 const mapInfo = useMapInfoStore()
 const uiStore = useUIMenuPanelStore()
 
+const props = defineProps<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mapDisplayRef: any
+}>()
+
 const initPosition = () => {
   position.init()
   setInterval(async () => {
     // console.log("predicted: ", position.getPredictionResult())
     // console.log("read position: ", position.getPosition())
     const userPos = position.getPosition()
-    const snappedPos = await path.snapToPath(mapInfo.current_buildingId, mapInfo.current_floor.id, userPos)
+    const snappedPos = props.mapDisplayRef.snapToPath(mapInfo.current_buildingId, mapInfo.current_floor.id, userPos)
     const heading = position.getRadHeading()
     // console.log("snapped: ", snappedPos)
-    map.setUserPosition(snappedPos as [number, number], heading)
-    map.setUserDebugPosition(userPos)
+    props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
+    props.mapDisplayRef.setUserDebugPosition(userPos)
   }, 1000)
   setInterval(() => {
     // console.log(position.getPredictionResult());
@@ -59,10 +61,10 @@ watch(
   (isInitialized) => {
     if (isInitialized) {
       console.log('Map is ready, rendering paths and POIs!')
-      path.renderPaths(mapInfo.current_buildingId, mapInfo.current_floor.id)
+      props.mapDisplayRef.renderPaths(mapInfo.current_buildingId, mapInfo.current_floor.id)
 
       const POIs = mapInfo.POIs
-      poi.renderPOIs(POIs)
+      props.mapDisplayRef.renderPOIs(POIs)
 
       setTimeout(() => {
         showPopup.value = true
