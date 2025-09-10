@@ -7,7 +7,7 @@
 
 <script setup lang="ts">
 import {  RouterView } from 'vue-router'
-import FloorMap from './components/FloorMap.vue'
+import FloorMap from './components/MapDisplay.vue'
 </script>
 
 <style src="@/style/AppLayout.css"></style>

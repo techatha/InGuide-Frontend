@@ -25,7 +25,7 @@ import * as path from '@/composables/usePath'
 import * as position from '@/composables/usePositioningSystem'
 import * as poi from '@/composables/usePOI'
 import { useMapInfoStore } from '@/stores/mapInfo'
-import { useUIMenuPanelStore } from '@/stores/uiMenuPanel';
+import { useUIMenuPanelStore } from '@/stores/uiMenuPanel'
 // vue component
 import SearchBar from '@/components/SearchBar.vue'
 import PopUpWindow from '@/components/PopUpWindow.vue'
@@ -65,18 +65,19 @@ watch(
       poi.renderPOIs(POIs)
 
       setTimeout(() => {
-        if (position.isAvailable()) {
-          showPopup.value = true
-        }
+        showPopup.value = true
       }, 1000)
     }
   },
   { immediate: true },
 )
 
-watch(() => uiStore.isSearchFocused, () => {
-  uiStore.fullExpand()
-})
+watch(
+  () => uiStore.isSearchFocused,
+  () => {
+    uiStore.fullExpand()
+  },
+)
 </script>
 
 <style src="@/style/MapView.css"></style>

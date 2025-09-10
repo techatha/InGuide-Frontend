@@ -142,27 +142,31 @@ export function getRadHeading(): number {
 }
 
 function pushDataIntoWindowFame() {
+  const safe = (val: number | undefined | null) => val ?? 0
+
   const data: Data = {
     timestamp: Date.now(),
-    acc_x: latestIMUData.value?.accelerometer.x as number,
-    acc_y: latestIMUData.value?.accelerometer.y as number,
-    acc_z: latestIMUData.value?.accelerometer.z as number,
-    acc_gx: latestIMUData.value?.accIncludeGravity.x as number,
-    acc_gy: latestIMUData.value?.accIncludeGravity.y as number,
-    acc_gz: latestIMUData.value?.accIncludeGravity.z as number,
-    gyro_x: latestIMUData.value?.rotationRate.beta as number,
-    gyro_y: latestIMUData.value?.rotationRate.gamma as number,
-    gyro_z: latestIMUData.value?.rotationRate.alpha as number,
-    gps_lat: latestGPSLat.value as number,
-    gps_lon: latestGPSLng.value as number,
+    acc_x: safe(latestIMUData.value?.accelerometer.x),
+    acc_y: safe(latestIMUData.value?.accelerometer.y),
+    acc_z: safe(latestIMUData.value?.accelerometer.z),
+    acc_gx: safe(latestIMUData.value?.accIncludeGravity.x),
+    acc_gy: safe(latestIMUData.value?.accIncludeGravity.y),
+    acc_gz: safe(latestIMUData.value?.accIncludeGravity.z),
+    gyro_x: safe(latestIMUData.value?.rotationRate.beta),
+    gyro_y: safe(latestIMUData.value?.rotationRate.gamma),
+    gyro_z: safe(latestIMUData.value?.rotationRate.alpha),
+    gps_lat: safe(latestGPSLat.value),
+    gps_lon: safe(latestGPSLng.value),
   }
-  const dataSize = windowSize / dataInterval
 
+  const dataSize = windowSize / dataInterval
   windowData.value.push(data)
+
   if (windowData.value.length > dataSize) {
     windowData.value.shift()
   }
 }
+
 
 // world-frame transform function
 export function rotateToWorldFrame(acc: Acceleration, rotation: RotationRate) {

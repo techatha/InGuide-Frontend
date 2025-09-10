@@ -1,59 +1,74 @@
 import * as turf from '@turf/turf'
 import type { Feature, GeoJsonProperties, LineString, Position } from 'geojson'
 import pathService from '@/services/PathService'
-import * as map from '@/composables/useMap'
-import { toRaw } from 'vue'
+import { type Ref } from 'vue'
+import type { Map, PolylineOptions } from 'leaflet'
+import L from 'leaflet'
 
-const availablePath = {
-  color: 'orange',
-  weight: 5,
-  smoothFactor: 1,
-}
-
-export async function renderPaths(buildingId: string, floorId: string) {
-  try {
-    const graph = await pathService.loadPath(buildingId, floorId)
-    toRaw(map).clearWalkablePaths()
-    graph.adjacencyList.forEach((edges, startNodeId) => {
-      const startNode = graph.nodes.get(startNodeId)
-      edges.forEach((edge) => {
-        const endNode = graph.nodes.get(edge.targetNodeId)
-        if (!endNode) return
-        const path = [startNode?.coordinates, endNode?.coordinates] as [
-          [number, number],
-          [number, number],
-        ]
-        toRaw(map).setWalkablePath(path, availablePath)
+export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
+  async function renderPaths(buildingId: string, floorId: string) {
+    try {
+      const graph = await pathService.loadPath(buildingId, floorId)
+      clearWalkablePaths()
+      graph.adjacencyList.forEach((edges, startNodeId) => {
+        const startNode = graph.nodes.get(startNodeId)
+        edges.forEach((edge) => {
+          const endNode = graph.nodes.get(edge.targetNodeId)
+          if (!endNode) return
+          const path = [startNode?.coordinates, endNode?.coordinates] as [
+            [number, number],
+            [number, number],
+          ]
+          setWalkablePath(path, availablePath)
+        })
       })
-    })
-  } catch (error) {
-    console.log(error)
-  }
-}
-
-export async function snapToPath(buildingId: string, floorId: string, userPos: Position): Promise<[number, number] | null> {
-  const lineSegments = await buildLineStrings(buildingId, floorId)
-  userPos = switchLatLng(userPos)
-
-  // console.log(lineSegments)
-
-  let closest: [number, number] | null = null
-  let minDistance = Infinity
-
-  for (const segment of lineSegments) {
-    const snapped = turf.nearestPointOnLine(segment, userPos, { units: 'meters' })
-    const dist = snapped.properties?.dist ?? Infinity
-
-    if (dist < minDistance) {
-      minDistance = dist
-      closest = snapped.geometry.coordinates as [number, number]
+    } catch (error) {
+      console.log(error)
     }
   }
 
-  if (closest === null) {
-    return null
+  async function snapToPath(
+    buildingId: string,
+    floorId: string,
+    userPos: Position,
+  ): Promise<[number, number] | null> {
+    const lineSegments = await buildLineStrings(buildingId, floorId)
+    userPos = switchLatLng(userPos)
+
+    // console.log(lineSegments)
+
+    let closest: [number, number] | null = null
+    let minDistance = Infinity
+
+    for (const segment of lineSegments) {
+      const snapped = turf.nearestPointOnLine(segment, userPos, { units: 'meters' })
+      const dist = snapped.properties?.dist ?? Infinity
+
+      if (dist < minDistance) {
+        minDistance = dist
+        closest = snapped.geometry.coordinates as [number, number]
+      }
+    }
+
+    if (closest === null) {
+      return null
+    }
+    return switchLatLng(closest) as [number, number]
   }
-  return switchLatLng(closest) as [number, number]
+
+  function setWalkablePath(latlng: [[number, number], [number, number]], style: PolylineOptions) {
+    const newPath = L.polyline(latlng, style)
+    newPath.addTo(pathLayer)
+  }
+
+  function clearWalkablePaths() {
+    pathLayer.clearLayers()
+  }
+
+  return {
+    renderPaths,
+    snapToPath,
+  }
 }
 
 async function buildLineStrings(buildingId: string, floorId: string) {
@@ -86,4 +101,10 @@ async function buildLineStrings(buildingId: string, floorId: string) {
 
 function switchLatLng(pos: Position): Position {
   return [pos[1], pos[0]]
+}
+
+const availablePath = {
+  color: 'orange',
+  weight: 5,
+  smoothFactor: 1,
 }
