@@ -20,7 +20,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import * as position from '@/composables/usePositioningSystem'
+import { usePositioningSystem } from '@/composables/usePositioningSystem'
 import { useMapInfoStore } from '@/stores/mapInfo'
 import { useUIMenuPanelStore } from '@/stores/uiMenuPanel'
 // vue component
@@ -37,6 +37,7 @@ const props = defineProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mapDisplayRef: any
 }>()
+const position = usePositioningSystem()
 
 const initPosition = () => {
   position.init()

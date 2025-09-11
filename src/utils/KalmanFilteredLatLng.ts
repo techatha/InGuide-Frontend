@@ -92,9 +92,6 @@ export function KalmanFilteredLatLng() {
 
     kf.value.update(z)
 
-    // Optionally reset DeadReconing to this known position
-    deadRecon.value?.resetToBeacon({ id: 'kf1-update', latLng: [lat, lng] })
-
     return getLatLng()
   }
 
