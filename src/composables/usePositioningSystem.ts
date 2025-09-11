@@ -1,178 +1,194 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ref, watch } from 'vue'
 import { useGeolocation } from '@/composables/useGeolocation'
 import { useIMU } from '@/composables/useIMU'
 import { useDeviceOrientation } from '@/composables/useDeviceOrientation'
-import { useKalmanFilter } from '@/composables/useKalmanFilter'
-import type { Acceleration, RotationRate, IMUData } from '@/types/IMU'
-import type { Data, PredictionPayload, PredictionResponse, Probability } from '@/types/prediction'
-import { submitPayload } from '@/services/PredictionService'
+import { KalmanFilteredPosition } from '@/utils/KalmanFilteredPosition'
+import { KalmanFilteredLatLng } from '@/utils/KalmanFilteredLatLng'
+import { DeadReconing } from '@/utils/DeadReconing'
+import { WindowFrameBuffer } from '@/utils/WindowFrameBuffer'
 import { rotateToWorldFrame } from '@/utils/RotateToWorldFrame'
+import { submitPayload } from '@/services/PredictionService'
 
+import type { IMUData, Acceleration, RotationRate } from '@/types/IMU'
+import type { PredictionPayload, PredictionResponse } from '@/types/prediction'
+
+/** ======== Sensors ======== */
 const gps = useGeolocation()
 const imu = useIMU()
 const orien = useDeviceOrientation()
-const kf = useKalmanFilter()
 
+/** ======== Filters ======== */
+const kf2 = KalmanFilteredPosition() // display & final positioning
+const kf1 = KalmanFilteredLatLng()   // fusion of inertial + prob
+
+/** ======== Dead Reckoning ======== */
+const deadRecon = ref<DeadReconing | null>(null)
+
+/** ======== Data Buffers ======== */
+const imuBuffer: IMUData[] = []
+const windowBuffer = WindowFrameBuffer()
+
+/** ======== State ======== */
 const latestGPSLat = ref<number | null>(null)
 const latestGPSLng = ref<number | null>(null)
 const latestIMUData = ref<IMUData | null>(null)
-
 const latestPrediction = ref<PredictionResponse | null>(null)
 const isSubmittingPrediction = ref(false)
 
-const imuBuffer: IMUData[] = []
-
-const windowData = ref<Data[]>([])
-let windowSize: number
-let dataInterval: number
-
+/** ======== Initialization ======== */
 export async function init(
   interval: number = 500,
-  window: number = 4000,
+  windowSize: number = 4000,
   predictInterval: number = 1000,
 ): Promise<boolean> {
   gps.init()
   imu.requestPermission()
   orien.requestPermission()
 
-  windowSize = window
-  dataInterval = interval
+  windowBuffer.setSize(windowSize, interval)
 
+  /** ======== Watchers ======== */
   watch([gps.lat, gps.lng], ([lat, lng]) => {
-    if (lat != null && lng != null && (latestGPSLat.value != lat || latestGPSLng.value != lng)) {
-      // console.log('gps read!');
-      // console.log('new lat/lng: ', [lat, lng]);
+    if (lat != null && lng != null && (latestGPSLat.value !== lat || latestGPSLng.value !== lng)) {
       latestGPSLat.value = lat
       latestGPSLng.value = lng
-      if (
-        !kf.isInitialized() &&
-        orien &&
-        latestGPSLat.value != null &&
-        latestGPSLng.value != null
-      ) {
-        const heading = orien.heading.value?  orien.heading.value : 0
-        kf.init(lat, lng, (heading * Math.PI) / 180)
+
+      const heading = orien.heading.value ?? 0
+
+      if (!kf2.isInitialized()) {
+        kf2.init(lat, lng, (heading * Math.PI) / 180)
+      }
+
+      if (!kf1.deadRecon.value) {
+        kf1.init(lat, lng, (heading * Math.PI) / 180)
+        deadRecon.value = kf1.deadRecon.value
       }
     }
   })
 
-  watch(orien.heading, (orien) => {
-    if(latestGPSLat.value !== null && latestGPSLng.value !== null && orien !== null){
-      kf.update(latestGPSLat.value, latestGPSLng.value, (orien * Math.PI) / 180)
+  watch(orien.heading, (heading) => {
+    if (heading != null && latestGPSLat.value != null && latestGPSLng.value != null) {
+      kf2.update(latestGPSLat.value, latestGPSLng.value, (heading * Math.PI) / 180)
     }
   })
 
- watch(imu.IMUReading, (imuData) => {
+  watch(imu.IMUReading, (imuData) => {
     if (imuData) {
       latestIMUData.value = imuData
       imuBuffer.push(imuData)
     }
   })
 
-  // KF predict interval
+  /** ======== Prediction Loop ======== */
   setInterval(() => {
-    if (imuBuffer.length === 0) return
-    // const dtMs = Date.now() - latestPredictionUpdate
-    // const dt = dtMs / 1000
-    const acc: Acceleration = imuBuffer.reduce((acc, curr) => ({
-      x: acc.x + (curr.accelerometer.x ?? 0),
-      y: acc.y + (curr.accelerometer.y ?? 0),
-      z: acc.z + (curr.accelerometer.z ?? 0),
-    }), { x: 0, y: 0, z: 0 })
-    const gyro: RotationRate = imuBuffer.reduce((gyro, curr) => ({
-      alpha: gyro.alpha + (curr.rotationRate.alpha ?? 0),
-      beta: gyro.beta + (curr.rotationRate.beta ?? 0),
-      gamma: gyro.gamma + (curr.rotationRate.gamma ?? 0),
-    }), { alpha: 0, beta: 0, gamma: 0 })
+    if (!latestIMUData.value || imuBuffer.length === 0) return
 
-    const worldAcc: Acceleration = rotateToWorldFrame(acc, gyro)
-
-    // Convert gyro.alpha (deg/s) to radians per second for yaw rate
-    const gyroYawRateRad = gyro.alpha ? (gyro.alpha * Math.PI) / 180 : 0
-
-    kf.predict(
-      latestPrediction.value?.prediction as number,
-      worldAcc,
-      2.0,
-      latestPrediction.value?.probability as Probability,
-      gyroYawRateRad,
+    // Average accelerometer & gyro over buffer
+    const acc = imuBuffer.reduce(
+      (acc, curr) => ({
+        x: acc.x ?? 0 + (curr.accelerometer.x ?? 0),
+        y: acc.y ?? 0 + (curr.accelerometer.y ?? 0),
+        z: acc.z ?? 0 + (curr.accelerometer.z ?? 0),
+      }),
+      { x: 0, y: 0, z: 0 } as Acceleration,
     )
-  }, 2000)
+    if(acc.x)
+      acc.x /= imuBuffer.length
+    if(acc.y)
+      acc.y /= imuBuffer.length
+    if(acc.z)
+      acc.z /= imuBuffer.length
 
+    const gyro = imuBuffer.reduce(
+      (gyro, curr) => ({
+        alpha: gyro.alpha ?? 0 + (curr.rotationRate.alpha ?? 0),
+        beta: gyro.beta ?? 0 + (curr.rotationRate.beta ?? 0),
+        gamma: gyro.gamma ?? 0 + (curr.rotationRate.gamma ?? 0),
+      }),
+      { alpha: 0, beta: 0, gamma: 0 } as RotationRate,
+    )
+    if(gyro.alpha)
+      gyro.alpha /= imuBuffer.length
+    if(gyro.beta)
+      gyro.beta /= imuBuffer.length
+    if(gyro.gamma)
+      gyro.gamma /= imuBuffer.length
+
+    imuBuffer.length = 0 // clear after processing
+
+    // Rotate into world frame
+    const worldAcc = rotateToWorldFrame(acc, gyro)
+    const headingRad = (orien.heading.value ?? 0) * Math.PI / 180
+
+    // KF1 prediction (world-frame inertial)
+    const inertialPred = kf1.predict(
+      { ...latestIMUData.value, accelerometer: worldAcc, rotationRate: gyro },
+      headingRad,
+      0.5, // dt
+      latestPrediction.value?.probability,
+    )
+
+    // KF2 update with KF1 fused result
+    kf2.update(inertialPred[0], inertialPred[1], headingRad)
+  }, 500)
+
+  /** ======== Window Buffer ======== */
   setInterval(() => {
-    pushDataIntoWindowFame()
+    pushToWindowBuffer()
   }, interval)
 
+  /** ======== Remote Prediction ======== */
   setTimeout(() => {
     setInterval(async () => {
-      await getPrediction()
+      await requestPrediction()
     }, predictInterval)
   }, 500)
 
-  return true;
+  return true
 }
 
-async function getPrediction() {
-  if (isSubmittingPrediction.value) {
-    // console.log('Prediction submission already in progress, skipping.');
-    return
+/** ======== Window Push ======== */
+function pushToWindowBuffer() {
+  if (latestIMUData.value && latestGPSLat.value !== null && latestGPSLng.value !== null) {
+    windowBuffer.push(latestIMUData.value, latestGPSLat.value, latestGPSLng.value)
   }
-  const payload: PredictionPayload = {
-    interval: dataInterval,
-    data: [...windowData.value],
-  }
+}
+
+/** ======== Request Prediction ======== */
+async function requestPrediction() {
+  if (isSubmittingPrediction.value) return
   isSubmittingPrediction.value = true
+
   try {
-    const response = await submitPayload(payload)
-    latestPrediction.value = response
-  } catch (err: any) {
-    console.log('Prediction error :', err)
+    const payload: PredictionPayload = {
+      interval: windowBuffer.getInterval(),
+      data: windowBuffer.getWindowData(),
+    }
+    latestPrediction.value = await submitPayload(payload)
+  } catch (err) {
+    console.error('Prediction error:', err)
   } finally {
     isSubmittingPrediction.value = false
   }
 }
 
+/** ======== Getters ======== */
 export function getPredictionResult() {
   return latestPrediction.value
 }
-
 export function getPosition(): [number, number] {
-  return kf.getLatLng();
+  return kf2.getLatLng()
 }
-
 export function getRadHeading(): number {
-  return kf.getRadHeading();
+  return kf2.getRadHeading()
 }
-
-function pushDataIntoWindowFame() {
-  const safe = (val: number | undefined | null) => val ?? 0
-
-  const data: Data = {
-    timestamp: Date.now(),
-    acc_x: safe(latestIMUData.value?.accelerometer.x),
-    acc_y: safe(latestIMUData.value?.accelerometer.y),
-    acc_z: safe(latestIMUData.value?.accelerometer.z),
-    acc_gx: safe(latestIMUData.value?.accIncludeGravity.x),
-    acc_gy: safe(latestIMUData.value?.accIncludeGravity.y),
-    acc_gz: safe(latestIMUData.value?.accIncludeGravity.z),
-    gyro_x: safe(latestIMUData.value?.rotationRate.beta),
-    gyro_y: safe(latestIMUData.value?.rotationRate.gamma),
-    gyro_z: safe(latestIMUData.value?.rotationRate.alpha),
-    gps_lat: safe(latestGPSLat.value),
-    gps_lon: safe(latestGPSLng.value),
-  }
-
-  const dataSize = windowSize / dataInterval
-  windowData.value.push(data)
-
-  if (windowData.value.length > dataSize) {
-    windowData.value.shift()
-  }
-}
-
 export function isAvailable(): boolean {
-  const isIMU = imu.permission.value != null
-  const isGPS = gps.watcherId.value != null
-  return isIMU && isGPS
+  return imu.permission.value != null && gps.watcherId.value != null
+}
+
+/** ======== QR Reset Hook (for future) ======== */
+export function resetWithQRCode(lat: number, lng: number, facingRad: number) {
+  kf1.init(lat, lng, facingRad)
+  kf2.init(lat, lng, facingRad)
+  deadRecon.value?.resetToBeacon({ id: 'qr-reset', latLng: [lat, lng] })
 }

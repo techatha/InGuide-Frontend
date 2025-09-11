@@ -9,7 +9,7 @@ import { DistancePredictor } from '@/utils/DistancePredictor'
 
 export type Mode = 'forward' | 'turn' | 'halt'
 
-export function useKalmanFilter() {
+export function KalmanFilteredPosition() {
   const kf = ref<ExtendedKalmanFilter | null>(null)
   const Q = ref<math.Matrix | null>(null)
   const maxAccel = 5.0
