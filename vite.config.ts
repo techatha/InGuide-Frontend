@@ -11,7 +11,6 @@ export default defineConfig({
   plugins: [vue(), vueDevTools()],
   server: {
     host: '0.0.0.0',
-    port: 5174,
     https: {
       key: fs.readFileSync('./localhost+4-key.pem'),
       cert: fs.readFileSync('./localhost+4.pem'),
