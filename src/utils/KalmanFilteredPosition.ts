@@ -22,9 +22,10 @@ export function KalmanFilteredPosition() {
     orien: number,
     processNoise: number = 0.001
   ) {
-
+    coordsTransform = coordinatesTransform(initLat, initLng)
+    // console.log("kf initing", [initLat, initLng])
     const ENUcoords = coordsTransform.latLngToENU(initLat, initLng)
-
+    // console.log("enu init at", ENUcoords)
     const initStates = [ENUcoords[0], ENUcoords[1], 0, orien] // states (x) : [east, north, velocity, heading_yaw]
     const p = math.diag([1, 1, 2, 0.1])
     const h = math.matrix([
@@ -36,7 +37,6 @@ export function KalmanFilteredPosition() {
 
     kf.value = new ExtendedKalmanFilter(initStates, p, h, r)
     Q.value = math.multiply(math.diag([1, 1, 0.1, 1]), processNoise)
-    coordsTransform = coordinatesTransform(initLat, initLng)
 
   }
 
@@ -96,10 +96,12 @@ export function KalmanFilteredPosition() {
     const F = blendF(velo_n0, head_n0, dt, prob)
     const Q_blend = blendQ(prob)
     kf.value?.predict( F, Q_blend, x)
+    // console.log("POS KF predicted latLng now", getLatLng())
     return getLatLng()
   }
 
   function update(lat: number, lng: number, heading: number): [number, number] {
+    // console.log("pos KF update with", [lat, lng])
     const [e, n] = coordsTransform.latLngToENU(lat, lng)
     const z = math.matrix([[e], [n], [heading]])
     kf.value?.update(z)
@@ -107,8 +109,10 @@ export function KalmanFilteredPosition() {
   }
 
   function getLatLng(): [number, number] {
+    // console.log("state enu", kf.value?.getState())
     const result = kf.value?.getState() as [number, number]
     const latLng = coordsTransform.ENUToLatLng(result[0], result[1])
+    // console.log("lreturned latlng", latLng)
     return latLng
   }
 

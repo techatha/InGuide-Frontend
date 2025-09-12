@@ -99,6 +99,7 @@ export function KalmanFilteredLatLng() {
   function getLatLng(): [number, number] {
     if (!kf.value) throw new Error('KF1 not initialized')
     const ENU = [kf.value.x.get([0, 0]), kf.value.x.get([1, 0])]
+  // console.log("KFPosition returned", coordsTransform.ENUToLatLng(ENU[0], ENU[1]))
     return coordsTransform.ENUToLatLng(ENU[0], ENU[1])
   }
 

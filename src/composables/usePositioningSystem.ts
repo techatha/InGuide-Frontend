@@ -55,6 +55,7 @@ export function usePositioningSystem() {
     const heading = orien.heading.value ?? 0
 
     if (!kf2.isInitialized()) {
+      // console.log("kh2 init with", latLng)
       kf2.init(latLng[0], latLng[1], (heading * Math.PI) / 180)
     }
 
@@ -72,6 +73,7 @@ export function usePositioningSystem() {
       ) {
         latestGPSLat.value = lat
         latestGPSLng.value = lng
+        // console.log("gps read", [lat, lng])
         kf1.update(latestGPSLat.value, latestGPSLng.value, (heading * Math.PI) / 180)
       }
     })
@@ -128,7 +130,7 @@ export function usePositioningSystem() {
 
       // KF1 prediction (world-frame inertial)
       kf1.predict(
-        { ...latestIMUData.value, accelerometer: worldAcc, rotationRate: gyro },
+        latestIMUData.value,
         headingRad,
         0.5, // dt
         latestPrediction.value?.probability,

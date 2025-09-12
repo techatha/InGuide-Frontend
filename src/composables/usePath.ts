@@ -54,7 +54,7 @@ export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
       return null
     }
     const result = switchLatLng(closest)
-    console.log("cloest",result)
+    // console.log("cloest",result)
     return result
   }
 
