@@ -22,16 +22,20 @@
 import { ref, watch } from 'vue'
 import { usePositioningSystem } from '@/composables/usePositioningSystem'
 import { useMapInfoStore } from '@/stores/mapInfo'
+import { useBeaconStore } from '@/stores/beacon'
 import { useUIMenuPanelStore } from '@/stores/uiMenuPanel'
 // vue component
 import SearchBar from '@/components/SearchBar.vue'
 import PopUpWindow from '@/components/PopUpWindow.vue'
 import MenuPanel from '@/components/MenuPanel.vue'
 import SearchResultsView from './panelViews/SearchResultsView.vue'
+import { findNearestBeacon } from '@/utils/findNearestBeacon'
+import type { Beacon } from '@/types/beacon'
 
 const showPopup = ref(false)
 const mapInfo = useMapInfoStore()
 const uiStore = useUIMenuPanelStore()
+const beaconStore = useBeaconStore()
 
 const props = defineProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,9 +49,12 @@ const initPosition = () => {
     // console.log("predicted: ", position.getPredictionResult())
     // console.log("read position: ", position.getPosition())
     const userPos = position.getPosition()
-    const snappedPos = props.mapDisplayRef.snapToPath(mapInfo.current_buildingId, mapInfo.current_floor.id, userPos)
+    const snappedPos = await props.mapDisplayRef.snapToPath(mapInfo.current_buildingId, mapInfo.current_floor.id, userPos)
     const heading = position.getRadHeading()
-    // console.log("snapped: ", snappedPos)
+    const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.beacons as Beacon[])
+    if(nearestBeacon && nearestBeacon?.distance < .01)
+      position.deadRecon.value?.resetToBeacon(nearestBeacon?.beacon as Beacon)
+    console.log("snapped: ", snappedPos)
     props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
     props.mapDisplayRef.setUserDebugPosition(userPos)
   }, 1000)

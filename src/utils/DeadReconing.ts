@@ -52,8 +52,8 @@ export class DeadReconing {
    * Snap to a beacon position if this beacon hasn't been visited yet
    */
   resetToBeacon(beacon: Beacon) {
-    if (this.lastBeaconId !== beacon.id) {
-      this.lastBeaconId = beacon.id
+    if (this.lastBeaconId !== beacon.beaconId) {
+      this.lastBeaconId = beacon.beaconId
       const ENUcoords = t.latLngToENU(beacon.latLng[0], beacon.latLng[1])
       this.east = ENUcoords[0]
       this.north = ENUcoords[1]

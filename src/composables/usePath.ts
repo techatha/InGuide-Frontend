@@ -35,7 +35,7 @@ export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
     const lineSegments = await buildLineStrings(buildingId, floorId)
     userPos = switchLatLng(userPos)
 
-    // console.log(lineSegments)
+    console.log("paths ervice", lineSegments)
 
     let closest: [number, number] | null = null
     let minDistance = Infinity
@@ -53,8 +53,11 @@ export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
     if (closest === null) {
       return null
     }
-    return switchLatLng(closest) as [number, number]
+    const result = switchLatLng(closest)
+    console.log("cloest",result)
+    return result
   }
+
 
   function setWalkablePath(latlng: [[number, number], [number, number]], style: PolylineOptions) {
     const newPath = L.polyline(latlng, style)
@@ -99,7 +102,7 @@ async function buildLineStrings(buildingId: string, floorId: string) {
   return segments
 }
 
-function switchLatLng(pos: Position): Position {
+function switchLatLng(pos: Position): [number, number] {
   return [pos[1], pos[0]]
 }
 

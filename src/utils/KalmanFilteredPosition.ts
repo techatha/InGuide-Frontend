@@ -91,7 +91,7 @@ export function KalmanFilteredPosition() {
     }
     let head_n1 = (head_n0 + gyroYawRateRad * dt) % (2 * Math.PI)
     if (head_n1 < 0) head_n1 += 2 * Math.PI
-    console.log('head_n1: ', radToDeg(head_n1))
+    console.log('result: ', result)
     const x = math.matrix([[result.e], [result.n], [result.v], [head_n1]])
     const F = blendF(velo_n0, head_n0, dt, prob)
     const Q_blend = blendQ(prob)
@@ -198,6 +198,6 @@ function jacobianFHalt(): math.Matrix {
   return F
 }
 
-function radToDeg(rad: number): number {
-  return (rad * 180) / Math.PI
-}
+// function radToDeg(rad: number): number {
+//   return (rad * 180) / Math.PI
+// }

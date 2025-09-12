@@ -23,7 +23,9 @@ import { ref, onMounted, watch, type Ref } from 'vue'
 import 'leaflet/dist/leaflet.css'
 import { getFloors } from '@/services/buildingService'
 import PoiService from '@/services/PoiService'
+import beaconService from '@/services/beaconService'
 import { useMapInfoStore } from '@/stores/mapInfo'
+import { useBeaconStore } from '@/stores/beacon'
 import { useMap } from '@/composables/useMap'
 import type { Floor } from '@/types/floor'
 import type { POI } from '@/types/poi'
@@ -40,6 +42,7 @@ const path = usePath(map as Ref, pathLayer)
 const poi = usePOI(map as Ref, poiLayer)
 
 const mapInfo = useMapInfoStore()
+const beaconStore = useBeaconStore()
 // this is setup for test
 // CAMT Building location
 const bounds = [
@@ -53,6 +56,8 @@ const changeFloorPlan = async (floor: Floor) => {
   const build_id = mapInfo.current_buildingId
   const newPOIs = await PoiService.getPOIs(build_id, floor.id)
   mapInfo.loadPOIs(newPOIs)
+  const newBeacons = await beaconService.getBeacons(build_id, floor.id)
+  beaconStore.loadBeacons(newBeacons)
   path.renderPaths(build_id, floor.id)
   mapInfo.current_floor = floor
 }
@@ -64,6 +69,8 @@ onMounted(async () => {
   mapInfo.current_floor = floors[0]
   const POIs: POI[] = await PoiService.getPOIs(build_id, floors[0].id)
   mapInfo.loadPOIs(POIs)
+  const newBeacons = await beaconService.getBeacons(build_id, floors[0].id)
+  beaconStore.loadBeacons(newBeacons)
   await mapDisplay.init(mapContainer.value as HTMLElement, poiLayer, pathLayer)
   await mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url)
   mapDisplay.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
@@ -89,12 +96,24 @@ watch(
 
 // Define Expose Functions
 async function snapToPath(buildingId: string, floorId: string, position: [number, number]) {
-  await path.snapToPath(buildingId, floorId, position)
+  if (!position[0] || !position[1]) {
+    console.warn("Skipping snapToPath because latlng is null")
+    return
+  }
+  return await path.snapToPath(buildingId, floorId, position)
 }
 function setUserPosition(newLatLng: [number, number], headingRad: number){
+  if (!newLatLng[0] || !newLatLng[1]) {
+    console.warn("Skipping setUserPosition because latlng is null")
+    return
+  }
   mapDisplay.setUserPosition(newLatLng, headingRad)
 }
 function setUserDebugPosition(newLatLng: [number, number]) {
+  if (!newLatLng[0] || !newLatLng[1]) {
+    console.warn("Skipping setUserDebugPosition because latlng is null")
+    return
+  }
   mapDisplay.setUserDebugPosition(newLatLng)
 }
 function renderPaths(buildingId: string, floorId: string) {

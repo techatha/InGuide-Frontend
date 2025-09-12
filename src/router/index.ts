@@ -3,8 +3,6 @@ import MapView from '@/views/MapView.vue'
 import PoiDetail from '@/views/panelViews/PoiDetailView.vue'
 import RecommendedView from '@/views/panelViews/RecommendedView.vue'
 
-
-
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -16,18 +14,26 @@ const router = createRouter({
         {
           path: '',
           name: 'recommend',
-          component:RecommendedView,
+          component: RecommendedView,
         },
         {
-          path: 'details/:id', // Matches URLs like /place/123
+          path: 'details/:id',
           name: 'placeDetail',
           component: PoiDetail,
-          props: true // This passes the route's :id to the PoiDetail component as a prop
+          props: true,
         },
-      ]
+      ],
     },
-
-  ]
+    {
+      path: '/:beaconID',
+      name: 'beaconRedirect',
+      redirect: (to) => {
+        const beaconID = to.params.beaconID as string
+        localStorage.setItem('beaconID', beaconID)
+        return { name: 'home' }
+      },
+    },
+  ],
 })
 
 export default router

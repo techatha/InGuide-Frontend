@@ -1,4 +1,5 @@
 export interface Beacon {
-  id:string,
-  latLng: [number, number],
+  beaconId: string
+  name: string
+  latLng: [number, number]
 }

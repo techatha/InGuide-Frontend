@@ -4,13 +4,14 @@ import { useIMU } from '@/composables/useIMU'
 import { useDeviceOrientation } from '@/composables/useDeviceOrientation'
 import { KalmanFilteredPosition } from '@/utils/KalmanFilteredPosition'
 import { KalmanFilteredLatLng } from '@/utils/KalmanFilteredLatLng'
+import { useBeaconStore } from '@/stores/beacon'
 import { DeadReconing } from '@/utils/DeadReconing'
 import { WindowFrameBuffer } from '@/utils/WindowFrameBuffer'
 import { rotateToWorldFrame } from '@/utils/RotateToWorldFrame'
 import { submitPayload } from '@/services/PredictionService'
 
 import type { IMUData, Acceleration, RotationRate } from '@/types/IMU'
-import type { PredictionPayload, PredictionResponse } from '@/types/prediction'
+import type { PredictionPayload, PredictionResponse, Probability } from '@/types/prediction'
 
 /** ======== Sensors ======== */
 const gps = useGeolocation()
@@ -46,7 +47,21 @@ export function usePositioningSystem() {
     imu.requestPermission()
     orien.requestPermission()
 
+    const beaconStore = useBeaconStore()
+
     windowBuffer.setSize(windowSize, interval)
+    const initBeacon = localStorage.getItem('beaconID')
+    const latLng = beaconStore.findBeaconById(initBeacon ?? '').latLng
+    const heading = orien.heading.value ?? 0
+
+    if (!kf2.isInitialized()) {
+      kf2.init(latLng[0], latLng[1], (heading * Math.PI) / 180)
+    }
+
+    if (!kf1.deadRecon.value) {
+      kf1.init(latLng[0], latLng[1], (heading * Math.PI) / 180)
+      deadRecon.value = kf1.deadRecon.value
+    }
 
     /** ======== Watchers ======== */
     watch([gps.lat, gps.lng], ([lat, lng]) => {
@@ -57,23 +72,14 @@ export function usePositioningSystem() {
       ) {
         latestGPSLat.value = lat
         latestGPSLng.value = lng
-
-        const heading = orien.heading.value ?? 0
-
-        if (!kf2.isInitialized()) {
-          kf2.init(lat, lng, (heading * Math.PI) / 180)
-        }
-
-        if (!kf1.deadRecon.value) {
-          kf1.init(lat, lng, (heading * Math.PI) / 180)
-          deadRecon.value = kf1.deadRecon.value
-        }
+        kf1.update(latestGPSLat.value, latestGPSLng.value, (heading * Math.PI) / 180)
       }
     })
 
     watch(orien.heading, (heading) => {
-      if (heading != null && latestGPSLat.value != null && latestGPSLng.value != null) {
-        kf2.update(latestGPSLat.value, latestGPSLng.value, (heading * Math.PI) / 180)
+      if (heading != null) {
+        const kf1LatLng = kf1.getLatLng()
+        kf2.update(kf1LatLng[0], kf1LatLng[1], (heading * Math.PI) / 180)
       }
     })
 
@@ -118,17 +124,22 @@ export function usePositioningSystem() {
       // Rotate into world frame
       const worldAcc = rotateToWorldFrame(acc, gyro)
       const headingRad = ((orien.heading.value ?? 0) * Math.PI) / 180
+      const gyroYawRateRad = gyro.alpha ? (gyro.alpha * Math.PI) / 180 : 0
 
       // KF1 prediction (world-frame inertial)
-      const inertialPred = kf1.predict(
+      kf1.predict(
         { ...latestIMUData.value, accelerometer: worldAcc, rotationRate: gyro },
         headingRad,
         0.5, // dt
         latestPrediction.value?.probability,
       )
-
-      // KF2 update with KF1 fused result
-      kf2.update(inertialPred[0], inertialPred[1], headingRad)
+      kf2.predict(
+        latestPrediction.value?.prediction as number,
+        worldAcc,
+        2.0,
+        latestPrediction.value?.probability as Probability,
+        gyroYawRateRad,
+      )
     }, 500)
 
     /** ======== Window Buffer ======== */
@@ -162,6 +173,7 @@ export function usePositioningSystem() {
 
   return {
     init,
+    deadRecon,
     getPredictionResult,
     getPosition,
     getRadHeading,
@@ -169,27 +181,27 @@ export function usePositioningSystem() {
   }
 }
 
-  /** ======== Window Push ======== */
-  function pushToWindowBuffer() {
-    if (latestIMUData.value && latestGPSLat.value !== null && latestGPSLng.value !== null) {
-      windowBuffer.push(latestIMUData.value, latestGPSLat.value, latestGPSLng.value)
-    }
+/** ======== Window Push ======== */
+function pushToWindowBuffer() {
+  if (latestIMUData.value && latestGPSLat.value !== null && latestGPSLng.value !== null) {
+    windowBuffer.push(latestIMUData.value, latestGPSLat.value, latestGPSLng.value)
   }
+}
 
-  /** ======== Request Prediction ======== */
-  async function requestPrediction() {
-    if (isSubmittingPrediction.value) return
-    isSubmittingPrediction.value = true
+/** ======== Request Prediction ======== */
+async function requestPrediction() {
+  if (isSubmittingPrediction.value) return
+  isSubmittingPrediction.value = true
 
-    try {
-      const payload: PredictionPayload = {
-        interval: windowBuffer.getInterval(),
-        data: windowBuffer.getWindowData(),
-      }
-      latestPrediction.value = await submitPayload(payload)
-    } catch (err) {
-      console.error('Prediction error:', err)
-    } finally {
-      isSubmittingPrediction.value = false
+  try {
+    const payload: PredictionPayload = {
+      interval: windowBuffer.getInterval(),
+      data: windowBuffer.getWindowData(),
     }
+    latestPrediction.value = await submitPayload(payload)
+  } catch (err) {
+    console.error('Prediction error:', err)
+  } finally {
+    isSubmittingPrediction.value = false
   }
+}
