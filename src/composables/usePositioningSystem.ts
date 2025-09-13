@@ -22,8 +22,6 @@ const orien = useDeviceOrientation()
 const kf2 = KalmanFilteredPosition() // display & final positioning
 const kf1 = KalmanFilteredLatLng() // fusion of inertial + prob
 
-/** ======== Dead Reckoning ======== */
-
 /** ======== Data Buffers ======== */
 const imuBuffer: IMUData[] = []
 const windowBuffer = WindowFrameBuffer()
@@ -72,14 +70,14 @@ export function usePositioningSystem() {
         latestGPSLat.value = lat
         latestGPSLng.value = lng
         // console.log("gps read", [lat, lng])
-        kf1.update(latestGPSLat.value, latestGPSLng.value, (heading * Math.PI) / 180)
+        kf1.update(latestGPSLat.value, latestGPSLng.value)
       }
     })
 
-    watch(orien.heading, (heading) => {
-      if (heading != null) {
+    watch(orien.heading, (h) => {
+      if (h != null) {
         const kf1LatLng = kf1.getLatLng()
-        kf2.update(kf1LatLng[0], kf1LatLng[1], (heading * Math.PI) / 180)
+        kf2.update(kf1LatLng[0], kf1LatLng[1], (h * Math.PI) / 180)
       }
     })
 
@@ -97,9 +95,9 @@ export function usePositioningSystem() {
       // Average accelerometer & gyro over buffer
       const acc = imuBuffer.reduce(
         (acc, curr) => ({
-          x: acc.x ?? 0 + (curr.accelerometer.x ?? 0),
-          y: acc.y ?? 0 + (curr.accelerometer.y ?? 0),
-          z: acc.z ?? 0 + (curr.accelerometer.z ?? 0),
+          x: (acc.x ?? 0) + (curr.accelerometer.x ?? 0),
+          y: (acc.y ?? 0) + (curr.accelerometer.y ?? 0),
+          z: (acc.z ?? 0) + (curr.accelerometer.z ?? 0),
         }),
         { x: 0, y: 0, z: 0 } as Acceleration,
       )
@@ -109,9 +107,9 @@ export function usePositioningSystem() {
 
       const gyro = imuBuffer.reduce(
         (gyro, curr) => ({
-          alpha: gyro.alpha ?? 0 + (curr.rotationRate.alpha ?? 0),
-          beta: gyro.beta ?? 0 + (curr.rotationRate.beta ?? 0),
-          gamma: gyro.gamma ?? 0 + (curr.rotationRate.gamma ?? 0),
+          alpha: (gyro.alpha ?? 0) + (curr.rotationRate.alpha ?? 0),
+          beta: (gyro.beta ?? 0) + (curr.rotationRate.beta ?? 0),
+          gamma: (gyro.gamma ?? 0) + (curr.rotationRate.gamma ?? 0),
         }),
         { alpha: 0, beta: 0, gamma: 0 } as RotationRate,
       )
@@ -128,15 +126,15 @@ export function usePositioningSystem() {
 
       // KF1 prediction (world-frame inertial)
       kf1.predict(
-        latestIMUData.value,
+        worldAcc,
         headingRad,
-        0.5, // dt
+        interval / 1000,
         latestPrediction.value?.prediction as number,
       )
       kf2.predict(
         latestPrediction.value?.prediction as number,
         worldAcc,
-        2.0,
+        interval / 1000,
         latestPrediction.value?.probability as Probability,
         gyroYawRateRad,
       )

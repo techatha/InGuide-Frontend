@@ -1,4 +1,4 @@
-import type { IMUData } from '@/types/IMU'
+import type { Acceleration } from '@/types/IMU'
 import { DistancePredictor } from './DistancePredictor'
 import { coordinatesTransform } from './CoordinateTransformer'
 import type { Beacon } from '@/types/beacon'
@@ -31,15 +31,13 @@ export class DeadReckoning {
    * @returns [lat, lng] predicted
    */
   step(
-    imu: IMUData,
+    acc: Acceleration,
     heading: number,
     dt: number,
     mode: number
   ) {
     // Project accel along heading
-    const forward_accel =
-      (imu.accelerometer.x ?? 0) * Math.sin(heading) +
-      (imu.accelerometer.y ?? 0) * Math.cos(heading)
+    const forward_accel = (acc.x ?? 0) * Math.sin(heading) + (acc.y ?? 0) * Math.cos(heading)
 
     // Update velocity
     this.velocity += forward_accel * dt

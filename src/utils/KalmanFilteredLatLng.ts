@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import * as math from 'mathjs'
 import { ExtendedKalmanFilter } from '@/utils/KalmanFilter'
 import { coordinatesTransform } from '@/utils/CoordinateTransformer'
-import type { IMUData } from '@/types/IMU'
+import type { Acceleration } from '@/types/IMU'
 import { DeadReckoning } from '@/utils/DeadReckoning'
 
 export function KalmanFilteredLatLng() {
@@ -29,22 +29,21 @@ export function KalmanFilteredLatLng() {
     const initStates = [ENU[0], ENU[1], 0, headingRad]
 
     const P = math.diag([1, 1, 2, 0.1]) // initial covariance
-    const H = math.multiply(
-      math.matrix([
-        [1, 0, 0, 0], // measure east
-        [0, 1, 0, 0], // measure north
-        [0, 0, 0, 1], // measure heading
-      ]),
-      processNoise,
-    )
-    const R = math.diag([5, 5, 0.05]) // measurement noise
+
+    // Measurement matrix H (only position!)
+    const H = math.multiply(math.matrix([
+      [1, 0, 0, 0], // measure east
+      [0, 1, 0, 0], // measure north
+    ]), processNoise)
+
+    const R = math.diag([5, 5]) // measurement noise for lat/lng only
 
     kf.value = new ExtendedKalmanFilter(initStates, P, H, R)
   }
 
   /** Predict next position using DeadReconing (inertial) + optional probabilistic model */
   function predict(
-    imu: IMUData,
+    imu: Acceleration,
     headingRad: number,
     dt: number,
     mode: number = 0,
@@ -59,7 +58,7 @@ export function KalmanFilteredLatLng() {
       [ENU[0]],
       [ENU[1]],
       [inertial.velocity], // keep velocity
-      [headingRad],
+      [headingRad],        // heading only from orientation
     ])
 
     // Simple F matrix (identity)
@@ -71,12 +70,12 @@ export function KalmanFilteredLatLng() {
     return getLatLng()
   }
 
-  /** Update KF1 with a "measurement" from GPS or KF2 output */
-  function update(lat: number, lng: number, headingRad: number) {
+  /** Update KF1 with a "measurement" from GPS or KF2 output (lat/lng only) */
+  function update(lat: number, lng: number) {
     if (!kf.value) throw new Error('KF1 not initialized')
 
     const ENU = coordsTransform.latLngToENU(lat, lng)
-    const z = math.matrix([[ENU[0]], [ENU[1]], [headingRad]])
+    const z = math.matrix([[ENU[0]], [ENU[1]]]) // heading excluded
 
     kf.value.update(z)
 
@@ -87,7 +86,6 @@ export function KalmanFilteredLatLng() {
   function getLatLng(): [number, number] {
     if (!kf.value) throw new Error('KF1 not initialized')
     const ENU = [kf.value.x.get([0, 0]), kf.value.x.get([1, 0])]
-    // console.log("KFPosition returned", coordsTransform.ENUToLatLng(ENU[0], ENU[1]))
     return coordsTransform.ENUToLatLng(ENU[0], ENU[1])
   }
 
