@@ -46,7 +46,8 @@ const position = usePositioningSystem()
 const initPosition = () => {
   const initBeacon = localStorage.getItem('beaconID')
   const latLng = beaconStore.findBeaconById(initBeacon ?? '').latLng
-  position.init(latLng)
+  const snappedLatLng = props.mapDisplayRef.snapToPath(mapInfo.current_buildingId, mapInfo.current_floor.id, latLng)
+  position.init(snappedLatLng)
   setInterval(async () => {
     // console.log("predicted: ", position.getPredictionResult())
     // console.log("read position: ", position.getPosition())
