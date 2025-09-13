@@ -5,6 +5,7 @@ import type { Beacon } from '@/types/beacon'
 
 const t = coordinatesTransform()
 const pred = DistancePredictor()
+const kickBoostAccel = 0.5
 
 export class DeadReckoning {
   east: number
@@ -36,17 +37,12 @@ export class DeadReckoning {
     dt: number,
     mode: number
   ) {
-    // Project accel along heading
-    const forward_accel = (acc.x ?? 0) * Math.sin(heading) + (acc.y ?? 0) * Math.cos(heading)
-
-    // Update velocity
-    this.velocity += forward_accel * dt
-    this.velocity = Math.min(Math.max(this.velocity, 0), this.maxVelocity)
-
+    let forward_accel = (acc.x ?? 0) * Math.sin(heading) + (acc.y ?? 0) * Math.cos(heading)
     let result
     switch (mode) {
       case 1: // Forward
-        result = pred.forward(this.east, this.north, this.velocity, heading, 0, dt)
+        if(forward_accel < kickBoostAccel) forward_accel = kickBoostAccel
+        result = pred.forward(this.east, this.north, this.velocity, heading, forward_accel, dt)
 
         // Snap displacement to 8 directions
         const deltaE = result.e - this.east
@@ -56,6 +52,7 @@ export class DeadReckoning {
         const mag = Math.sqrt(deltaE ** 2 + deltaN ** 2)
         this.east += mag * Math.sin(snappedAngle)
         this.north += mag * Math.cos(snappedAngle)
+        this.velocity = result.v
         break
 
       case 2: // Turn
@@ -69,7 +66,7 @@ export class DeadReckoning {
         result = pred.halt(this.east, this.north)
         this.east = result.e
         this.north = result.n
-        this.velocity = 0
+        this.velocity = result.v
         break
     }
 

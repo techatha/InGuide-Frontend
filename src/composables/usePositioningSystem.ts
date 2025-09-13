@@ -4,7 +4,6 @@ import { useIMU } from '@/composables/useIMU'
 import { useDeviceOrientation } from '@/composables/useDeviceOrientation'
 import { KalmanFilteredPosition } from '@/utils/KalmanFilteredPosition'
 import { KalmanFilteredLatLng } from '@/utils/KalmanFilteredLatLng'
-import { useBeaconStore } from '@/stores/beacon'
 import { WindowFrameBuffer } from '@/utils/WindowFrameBuffer'
 import { rotateToWorldFrame } from '@/utils/RotateToWorldFrame'
 import { submitPayload } from '@/services/PredictionService'
@@ -36,6 +35,7 @@ const isSubmittingPrediction = ref(false)
 export function usePositioningSystem() {
   /** ======== Initialization ======== */
   async function init(
+    latLng: [number, number],
     interval: number = 500,
     windowSize: number = 4000,
     predictInterval: number = 1000,
@@ -44,11 +44,7 @@ export function usePositioningSystem() {
     imu.requestPermission()
     orien.requestPermission()
 
-    const beaconStore = useBeaconStore()
-
     windowBuffer.setSize(windowSize, interval)
-    const initBeacon = localStorage.getItem('beaconID')
-    const latLng = beaconStore.findBeaconById(initBeacon ?? '').latLng
     const heading = orien.heading.value ?? 0
 
     if (!kf2.isInitialized()) {
