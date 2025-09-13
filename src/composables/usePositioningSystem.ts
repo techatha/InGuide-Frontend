@@ -119,8 +119,14 @@ export function usePositioningSystem() {
 
       imuBuffer.length = 0 // clear after processing
 
+      const orient: RotationRate = {
+        alpha: orien.alpha.value,
+        beta: orien.beta.value,
+        gamma: orien.gamma.value
+      }
+
       // Rotate into world frame
-      const worldAcc = rotateToWorldFrame(acc, gyro)
+      const worldAcc = rotateToWorldFrame(acc, orient)
       const headingRad = ((orien.heading.value ?? 0) * Math.PI) / 180
       const gyroYawRateRad = gyro.alpha ? (gyro.alpha * Math.PI) / 180 : 0
 

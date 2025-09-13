@@ -3,7 +3,7 @@ export function DistancePredictor() {
   const dampingFactor = 0.98
 
   function forward(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {
-    const east_n1 = e + v * Math.sin(yaw) * dt
+    const east_n1 = e - v * Math.sin(yaw) * dt
     const nort_n1 = n + v * Math.cos(yaw) * dt
     const velo_n1 = Math.min((v + acc * dt) * dampingFactor, maxVelocity)
     console.log('Forward (m/s) => ', velo_n1)
@@ -11,7 +11,7 @@ export function DistancePredictor() {
   }
 
   function turn(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {
-    const east_n1 = e + v * Math.sin(yaw) * dt
+    const east_n1 = e - v * Math.sin(yaw) * dt
     const nort_n1 = n + v * Math.cos(yaw) * dt
     const velo_n1 = Math.min((v + acc * dt) * dampingFactor, maxVelocity)
     console.log('Turn (m/s) => ', velo_n1)
