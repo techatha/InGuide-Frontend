@@ -5,13 +5,13 @@ import { useDeviceOrientation } from '@/composables/useDeviceOrientation'
 import { KalmanFilteredPosition } from '@/utils/KalmanFilteredPosition'
 import { KalmanFilteredLatLng } from '@/utils/KalmanFilteredLatLng'
 import { useBeaconStore } from '@/stores/beacon'
-import { DeadReconing } from '@/utils/DeadReconing'
 import { WindowFrameBuffer } from '@/utils/WindowFrameBuffer'
 import { rotateToWorldFrame } from '@/utils/RotateToWorldFrame'
 import { submitPayload } from '@/services/PredictionService'
 
 import type { IMUData, Acceleration, RotationRate } from '@/types/IMU'
 import type { PredictionPayload, PredictionResponse, Probability } from '@/types/prediction'
+import type { Beacon } from '@/types/beacon'
 
 /** ======== Sensors ======== */
 const gps = useGeolocation()
@@ -23,7 +23,6 @@ const kf2 = KalmanFilteredPosition() // display & final positioning
 const kf1 = KalmanFilteredLatLng() // fusion of inertial + prob
 
 /** ======== Dead Reckoning ======== */
-const deadRecon = ref<DeadReconing | null>(null)
 
 /** ======== Data Buffers ======== */
 const imuBuffer: IMUData[] = []
@@ -59,9 +58,8 @@ export function usePositioningSystem() {
       kf2.init(latLng[0], latLng[1], (heading * Math.PI) / 180)
     }
 
-    if (!kf1.deadRecon.value) {
+    if (!kf1.deadReckon.value) {
       kf1.init(latLng[0], latLng[1], (heading * Math.PI) / 180)
-      deadRecon.value = kf1.deadRecon.value
     }
 
     /** ======== Watchers ======== */
@@ -133,7 +131,7 @@ export function usePositioningSystem() {
         latestIMUData.value,
         headingRad,
         0.5, // dt
-        latestPrediction.value?.probability,
+        latestPrediction.value?.prediction as number,
       )
       kf2.predict(
         latestPrediction.value?.prediction as number,
@@ -173,13 +171,17 @@ export function usePositioningSystem() {
     return imu.permission.value != null && gps.watcherId.value != null
   }
 
+  function resetToBeacon(beacon: Beacon) {
+    kf1.deadReckon.value?.resetToBeacon(beacon)
+  }
+
   return {
     init,
-    deadRecon,
     getPredictionResult,
     getPosition,
     getRadHeading,
     isAvailable,
+    resetToBeacon,
   }
 }
 

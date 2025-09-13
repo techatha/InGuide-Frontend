@@ -54,7 +54,7 @@ const initPosition = () => {
     const heading = position.getRadHeading()
     const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.beacons as Beacon[])
     if(nearestBeacon && nearestBeacon?.distance < .01)
-      position.deadRecon.value?.resetToBeacon(nearestBeacon?.beacon as Beacon)
+      position.resetToBeacon(nearestBeacon?.beacon as Beacon)
     // console.log("snapped: ", snappedPos)
     props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
     props.mapDisplayRef.setUserDebugPosition(userPos)
