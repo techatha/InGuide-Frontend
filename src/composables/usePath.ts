@@ -35,7 +35,7 @@ export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
     const lineSegments = await buildLineStrings(buildingId, floorId)
     userPos = switchLatLng(userPos)
 
-    console.log("paths ervice", lineSegments)
+    // console.log("paths Service", lineSegments)
 
     let closest: [number, number] | null = null
     let minDistance = Infinity

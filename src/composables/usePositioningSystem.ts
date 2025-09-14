@@ -6,11 +6,13 @@ import { KalmanFilteredPosition } from '@/utils/KalmanFilteredPosition'
 import { KalmanFilteredLatLng } from '@/utils/KalmanFilteredLatLng'
 import { WindowFrameBuffer } from '@/utils/WindowFrameBuffer'
 import { rotateToWorldFrame } from '@/utils/RotateToWorldFrame'
-import { submitPayload } from '@/services/PredictionService'
+// import { submitPayload } from '@/services/PredictionService'
+import localModel from '@/services/localModel'
 
 import type { IMUData, Acceleration, RotationRate } from '@/types/IMU'
-import type { PredictionPayload, PredictionResponse, Probability } from '@/types/prediction'
+import type { PredictionResponse, Probability } from '@/types/prediction'
 import type { Beacon } from '@/types/beacon'
+import { preprocess } from '@/utils/ModelPreprocess'
 
 /** ======== Sensors ======== */
 const gps = useGeolocation()
@@ -30,19 +32,19 @@ const latestGPSLat = ref<number | null>(null)
 const latestGPSLng = ref<number | null>(null)
 const latestIMUData = ref<IMUData | null>(null)
 const latestPrediction = ref<PredictionResponse | null>(null)
-const isSubmittingPrediction = ref(false)
+// const isSubmittingPrediction = ref(false)
 
 export function usePositioningSystem() {
   /** ======== Initialization ======== */
-  async function init(
+  function init(
     latLng: [number, number],
     interval: number = 500,
     windowSize: number = 4000,
-    predictInterval: number = 1000,
-  ): Promise<boolean> {
+    // predictInterval: number = 1000,
+  ): boolean {
     gps.init()
-    imu.requestPermission()
-    orien.requestPermission()
+
+    localModel.loadLocalModel()
 
     windowBuffer.setSize(windowSize, interval)
     const heading = orien.heading.value ?? 0
@@ -85,7 +87,7 @@ export function usePositioningSystem() {
     })
 
     /** ======== Prediction Loop ======== */
-    setInterval(() => {
+    setInterval(async () => {
       if (!latestIMUData.value || imuBuffer.length === 0) return
 
       // Average accelerometer & gyro over buffer
@@ -121,23 +123,31 @@ export function usePositioningSystem() {
         gamma: orien.gamma.value
       }
 
+      console.log(orient)
       // Rotate into world frame
       const worldAcc = rotateToWorldFrame(acc, orient)
       const headingRad = ((orien.heading.value ?? 0) * Math.PI) / 180
       const gyroYawRateRad = gyro.alpha ? (gyro.alpha * Math.PI) / 180 : 0
+
+      const window = windowBuffer.getWindowData()
+      const preprocessedData = preprocess(window, windowBuffer.getInterval())
+      const prob: PredictionResponse = await localModel.predictLocal(preprocessedData)
+      latestPrediction.value = prob
+
+      console.log(prob)
 
       // KF1 prediction (world-frame inertial)
       kf1.predict(
         worldAcc,
         headingRad,
         interval / 1000,
-        latestPrediction.value?.prediction as number,
+        prob.prediction as number,
       )
       kf2.predict(
-        latestPrediction.value?.prediction as number,
+        prob.prediction as number,
         worldAcc,
         interval / 1000,
-        latestPrediction.value?.probability as Probability,
+        prob.probability as Probability,
         gyroYawRateRad,
       )
     }, 500)
@@ -148,11 +158,11 @@ export function usePositioningSystem() {
     }, interval)
 
     /** ======== Remote Prediction ======== */
-    setTimeout(() => {
-      setInterval(async () => {
-        await requestPrediction()
-      }, predictInterval)
-    }, 500)
+    // setTimeout(() => {
+    //   setInterval(async () => {
+    //     await requestPrediction()
+    //   }, predictInterval)
+    // }, 500)
 
     return true
   }
@@ -170,7 +180,9 @@ export function usePositioningSystem() {
   function isAvailable(): boolean {
     return imu.permission.value != null && gps.watcherId.value != null
   }
-
+  function isPermissionGranted() {
+    return imu.permission.value == 'granted' && orien.permission.value == 'granted'
+  }
   function resetToBeacon(beacon: Beacon) {
     kf1.deadReckon.value?.resetToBeacon(beacon)
   }
@@ -182,6 +194,9 @@ export function usePositioningSystem() {
     getRadHeading,
     isAvailable,
     resetToBeacon,
+    imu,
+    orien,
+    isPermissionGranted,
   }
 }
 
@@ -193,19 +208,19 @@ function pushToWindowBuffer() {
 }
 
 /** ======== Request Prediction ======== */
-async function requestPrediction() {
-  if (isSubmittingPrediction.value) return
-  isSubmittingPrediction.value = true
+// async function requestPrediction() {
+//   if (isSubmittingPrediction.value) return
+//   isSubmittingPrediction.value = true
 
-  try {
-    const payload: PredictionPayload = {
-      interval: windowBuffer.getInterval(),
-      data: windowBuffer.getWindowData(),
-    }
-    latestPrediction.value = await submitPayload(payload)
-  } catch (err) {
-    console.error('Prediction error:', err)
-  } finally {
-    isSubmittingPrediction.value = false
-  }
-}
+//   try {
+//     const payload: PredictionPayload = {
+//       interval: windowBuffer.getInterval(),
+//       data: windowBuffer.getWindowData(),
+//     }
+//     latestPrediction.value = await submitPayload(payload)
+//   } catch (err) {
+//     console.error('Prediction error:', err)
+//   } finally {
+//     isSubmittingPrediction.value = false
+//   }
+// }

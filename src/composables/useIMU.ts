@@ -22,6 +22,7 @@ export function useIMU(alpha = 0.5) {
       if (permission.value !== 'granted') throw new Error('Permission denied')
     }
     setupListener()
+
     return true
   }
 

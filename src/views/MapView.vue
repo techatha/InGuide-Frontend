@@ -12,7 +12,7 @@
   <PopUpWindow name="popup" v-model:visible="showPopup">
     <h2 class="text-xl font-bold mb-2">Welcome to InGuide!</h2>
     <p class="mb-4">🙏 Please enable Sensor API.</p>
-    <button @click="initPosition" class="mt-4 px-3 py-2 bg-blue-600 text-white rounded-lg">
+    <button @click="requestPermissions" class="mt-4 px-3 py-2 bg-blue-600 text-white rounded-lg">
       Enable sensor API
     </button>
   </PopUpWindow>
@@ -33,6 +33,7 @@ import { findNearestBeacon } from '@/utils/findNearestBeacon'
 import type { Beacon } from '@/types/beacon'
 
 const showPopup = ref(false)
+const isPermissionGranted = ref(false)
 const mapInfo = useMapInfoStore()
 const uiStore = useUIMenuPanelStore()
 const beaconStore = useBeaconStore()
@@ -43,30 +44,56 @@ const props = defineProps<{
 }>()
 const position = usePositioningSystem()
 
-const initPosition = () => {
+const initPosition = async () => {
   const initBeacon = localStorage.getItem('beaconID')
   const latLng = beaconStore.findBeaconById(initBeacon ?? '').latLng
-  const snappedLatLng = props.mapDisplayRef.snapToPath(mapInfo.current_buildingId, mapInfo.current_floor.id, latLng)
+  const snappedLatLng = await props.mapDisplayRef.snapToPath(
+    mapInfo.current_buildingId,
+    mapInfo.current_floor.id,
+    latLng
+  )
   position.init(snappedLatLng)
+
   setInterval(async () => {
-    // console.log("predicted: ", position.getPredictionResult())
-    // console.log("read position: ", position.getPosition())
+    console.log("UI Updated")
     const userPos = position.getPosition()
-    // console.log("user's pos:", userPos)
-    const snappedPos = await props.mapDisplayRef.snapToPath(mapInfo.current_buildingId, mapInfo.current_floor.id, userPos)
+    const snappedPos = await props.mapDisplayRef.snapToPath(
+      mapInfo.current_buildingId,
+      mapInfo.current_floor.id,
+      userPos
+    )
     const heading = position.getRadHeading()
-    const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.beacons as Beacon[])
+    console.log("heading :", heading)
+    const nearestBeacon = findNearestBeacon(
+      userPos[0],
+      userPos[1],
+      beaconStore.beacons as Beacon[]
+    )
     if(nearestBeacon && nearestBeacon?.distance < .01)
       position.resetToBeacon(nearestBeacon?.beacon as Beacon)
-    // console.log("snapped: ", snappedPos)
+
     props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
     props.mapDisplayRef.setUserDebugPosition(userPos)
   }, 1000)
-  setInterval(() => {
-    // console.log(position.getPredictionResult());
-  }, 2000)
-  showPopup.value = false
+
+  // setInterval(() => {
+  //   console.log(position.getPredictionResult());
+  // }, 2000)
 }
+
+
+const requestPermissions = async() => {
+  await position.imu.requestPermission()
+  await position.orien.requestPermission()
+  isPermissionGranted.value = position.isPermissionGranted()
+
+  console.log(position.isPermissionGranted())
+
+  if (isPermissionGranted.value) {
+    showPopup.value = false   // close only when granted
+  }
+}
+
 
 watch(
   () => mapInfo.isMapInitialized,
@@ -92,6 +119,10 @@ watch(
     uiStore.fullExpand()
   },
 )
+
+watch(() => isPermissionGranted.value, (p) => {
+  if(p) initPosition()
+  })
 </script>
 
 <style src="@/style/MapView.css"></style>

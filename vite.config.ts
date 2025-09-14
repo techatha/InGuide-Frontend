@@ -10,10 +10,14 @@ import fs from 'fs'
 export default defineConfig({
   plugins: [vue(), vueDevTools()],
   server: {
+    port: 5173,
     host: '0.0.0.0',
     https: {
       key: fs.readFileSync('./localhost+4-key.pem'),
       cert: fs.readFileSync('./localhost+4.pem'),
+    },
+    fs: {
+      strict: false,
     },
   },
   resolve: {

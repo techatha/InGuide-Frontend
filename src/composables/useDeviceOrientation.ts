@@ -7,24 +7,26 @@ export function useDeviceOrientation() {
   const gamma = ref<number | null>(null)
   const heading = ref<number | null>(null)
   let listener: ((e: DeviceOrientationEvent) => void) | null = null
+  const permission = ref<string | null>(null)
 
-  async function requestPermission(): Promise<boolean> {
+  async function requestPermission(){
     if (
       typeof DeviceOrientationEvent !== 'undefined' &&
       typeof (DeviceOrientationEvent as any).requestPermission === 'function'
     ) {
-      const perm = await (DeviceOrientationEvent as any).requestPermission()
-      if (perm !== 'granted') throw new Error('Permission denied')
-      setupListener()
-      return true
-    } else {
-      setupListener()
-      return true
+      permission.value = await (DeviceOrientationEvent as any).requestPermission()
+      // console.log("orien", permission.value)
+      if (permission.value !== 'granted') throw new Error('Permission denied')
     }
+
+    setupListener()
+    permission.value = 'granted'
   }
 
   function setupListener() {
+    // console.log("orien listener set")
     listener = (event: DeviceOrientationEvent) => {
+      // console.log("yep yep", event.alpha)
       alpha.value = event.alpha
       beta.value = event.beta
       gamma.value = event.gamma
@@ -54,5 +56,6 @@ export function useDeviceOrientation() {
     requestPermission,
     stop,
     isAvailable,
+    permission,
   }
 }
