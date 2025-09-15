@@ -6,4 +6,5 @@ export interface POI {
   type: string
   images: string[]
   detail: string
+  recommended?: boolean
 }

@@ -20,6 +20,7 @@ defineProps<{
         name: string
         type: string
         images: string[]
+        recommended?: boolean
     }
 }>()
 </script>

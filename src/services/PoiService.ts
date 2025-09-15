@@ -42,7 +42,19 @@ async function getPOIById(buildingId: string, poiId: string) {
   }
 }
 
+async function getRecommendedInBuilding(buildingId: string, signal?: AbortSignal) {
+  const res = await httpClient.get(`/POIs/${buildingId}/recommended`, { signal })
+  return res.data
+}
+
+async function getRecommendedOnFloor(buildingId: string, floorId: string, signal?: AbortSignal) {
+  const res = await httpClient.get(`/POIs/${buildingId}/${floorId}/recommended`, { signal })
+  return res.data
+}
+
 export default {
   getPOIs,
-  getPOIById
+  getPOIById,
+  getRecommendedInBuilding,
+  getRecommendedOnFloor
 }

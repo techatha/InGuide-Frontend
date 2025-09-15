@@ -16,7 +16,7 @@ export function usePOI(map: Ref<Map>, poiLayer: L.LayerGroup) {
   function createPOIMarker(latlng: [number, number], poiType: string, id: string, name?: string) {
     const iconDef = poiIconMap[poiType] || faCircle
     const svgIcon = createSvgIcon(iconDef)
-    const color = poiColorMap[poiType] || '#FDA172'
+    const color = poiColorMap[poiType] || '#A3C4A8'
 
     const uiStore = useUIMenuPanelStore()
 
@@ -95,9 +95,9 @@ const poiIconMap: Record<string, IconDefinition> = {
 }
 
 const poiColorMap: Record<string, string> = {
-  Restroom: '#FF0000',
-  'Lecture Room': '#00FF00',
-  'Computer Lab': '#0000FF',
+  Restroom: '#B39B4C',
+  'Lecture Room': '#708CC2',
+  'Computer Lab': '#7866A3',
 }
 
 function createSvgIcon(icon: IconDefinition, size = 18, color = 'white') {

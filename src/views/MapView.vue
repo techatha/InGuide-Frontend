@@ -69,9 +69,6 @@ const initPosition = async () => {
       position.resetToBeacon(nearestBeacon?.beacon as Beacon)
 
     props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
-    /**
-     * Debug User's Position
-     */
     // props.mapDisplayRef.setUserDebugPosition(userPos)
   }, 1000)
 
@@ -97,9 +94,6 @@ watch(
   (isInitialized) => {
     if (isInitialized) {
       console.log('Map is ready, rendering paths and POIs!')
-      /**
-       * Debug Render Path
-       */
       // props.mapDisplayRef.renderPaths(mapInfo.current_buildingId, mapInfo.current_floor.id)
 
       const POIs = mapInfo.POIs
