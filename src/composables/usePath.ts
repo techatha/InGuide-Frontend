@@ -27,6 +27,8 @@ export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
     }
   }
 
+  
+
   async function snapToPath(
     buildingId: string,
     floorId: string,

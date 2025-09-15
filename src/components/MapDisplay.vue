@@ -119,6 +119,9 @@ function setUserDebugPosition(newLatLng: [number, number]) {
 function renderPaths(buildingId: string, floorId: string) {
   path.renderPaths(buildingId, floorId)
 }
+// function renderPathNode(){
+
+// }
 function renderPOIs(pois: POI[]) {
   poi.renderPOIs(pois)
 }

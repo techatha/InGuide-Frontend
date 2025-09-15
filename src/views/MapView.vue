@@ -50,30 +50,29 @@ const initPosition = async () => {
   const snappedLatLng = await props.mapDisplayRef.snapToPath(
     mapInfo.current_buildingId,
     mapInfo.current_floor.id,
-    latLng
+    latLng,
   )
   position.init(snappedLatLng)
 
   setInterval(async () => {
-    console.log("UI Updated")
+    // console.log("UI Updated")
     const userPos = position.getPosition()
     const snappedPos = await props.mapDisplayRef.snapToPath(
       mapInfo.current_buildingId,
       mapInfo.current_floor.id,
-      userPos
+      userPos,
     )
     const heading = position.getRadHeading()
-    console.log("heading :", heading)
-    const nearestBeacon = findNearestBeacon(
-      userPos[0],
-      userPos[1],
-      beaconStore.beacons as Beacon[]
-    )
-    if(nearestBeacon && nearestBeacon?.distance < .01)
+    // console.log("heading :", heading)
+    const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.beacons as Beacon[])
+    if (nearestBeacon && nearestBeacon?.distance < 0.01)
       position.resetToBeacon(nearestBeacon?.beacon as Beacon)
 
     props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
-    props.mapDisplayRef.setUserDebugPosition(userPos)
+    /**
+     * Debug User's Position
+     */
+    // props.mapDisplayRef.setUserDebugPosition(userPos)
   }, 1000)
 
   // setInterval(() => {
@@ -81,8 +80,7 @@ const initPosition = async () => {
   // }, 2000)
 }
 
-
-const requestPermissions = async() => {
+const requestPermissions = async () => {
   await position.imu.requestPermission()
   await position.orien.requestPermission()
   isPermissionGranted.value = position.isPermissionGranted()
@@ -90,17 +88,19 @@ const requestPermissions = async() => {
   console.log(position.isPermissionGranted())
 
   if (isPermissionGranted.value) {
-    showPopup.value = false   // close only when granted
+    showPopup.value = false // close only when granted
   }
 }
-
 
 watch(
   () => mapInfo.isMapInitialized,
   (isInitialized) => {
     if (isInitialized) {
       console.log('Map is ready, rendering paths and POIs!')
-      props.mapDisplayRef.renderPaths(mapInfo.current_buildingId, mapInfo.current_floor.id)
+      /**
+       * Debug Render Path
+       */
+      // props.mapDisplayRef.renderPaths(mapInfo.current_buildingId, mapInfo.current_floor.id)
 
       const POIs = mapInfo.POIs
       props.mapDisplayRef.renderPOIs(POIs)
@@ -120,9 +120,12 @@ watch(
   },
 )
 
-watch(() => isPermissionGranted.value, (p) => {
-  if(p) initPosition()
-  })
+watch(
+  () => isPermissionGranted.value,
+  (p) => {
+    if (p) initPosition()
+  },
+)
 </script>
 
 <style src="@/style/MapView.css"></style>

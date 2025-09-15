@@ -123,7 +123,7 @@ export function usePositioningSystem() {
         gamma: orien.gamma.value
       }
 
-      console.log(orient)
+      // console.log(orient)
       // Rotate into world frame
       const worldAcc = rotateToWorldFrame(acc, orient)
       const headingRad = ((orien.heading.value ?? 0) * Math.PI) / 180
