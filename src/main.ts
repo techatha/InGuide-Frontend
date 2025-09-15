@@ -15,8 +15,16 @@ import {
     faGraduationCap,
     faCircle,
     faDesktop,
-    faFilter  } from '@fortawesome/free-solid-svg-icons'
-library.add(faSearch, faRestroom, faGraduationCap, faCircle, faDesktop, faFilter)
+    faFilter,
+    faImage  } from '@fortawesome/free-solid-svg-icons'
+library.add(
+    faSearch, 
+    faRestroom, 
+    faGraduationCap, 
+    faCircle, 
+    faDesktop, 
+    faFilter,
+    faImage)
 
 const app = createApp(App)
 
