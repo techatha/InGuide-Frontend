@@ -22,7 +22,7 @@ import PoiCard from '@/components/PoiCard.vue'
 import PoiService from '@/services/PoiService';
 import { useMapInfoStore } from '@/stores/mapInfo';
 import type { POI } from '@/types/poi';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, onActivated, onDeactivated, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -88,6 +88,14 @@ function stopPolling() {
 
 onMounted(startPolling)
 onUnmounted(stopPolling)
+onActivated(() => {
+  isLoading.value = true;
+  startPolling();
+})
+onDeactivated(() => {
+  stopPolling();
+})
+
 watch(() => mapInfo.current_buildingId, startPolling)
 
 function handleViewDetail(poi: POI) {

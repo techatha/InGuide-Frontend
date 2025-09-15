@@ -16,7 +16,8 @@ import {
     faCircle,
     faDesktop,
     faFilter,
-    faImage  } from '@fortawesome/free-solid-svg-icons'
+    faImage,
+    faChevronLeft  } from '@fortawesome/free-solid-svg-icons'
 library.add(
     faSearch, 
     faRestroom, 
@@ -24,7 +25,8 @@ library.add(
     faCircle, 
     faDesktop, 
     faFilter,
-    faImage)
+    faImage,
+    faChevronLeft)
 
 const app = createApp(App)
 
