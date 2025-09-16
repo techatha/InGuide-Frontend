@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isLoading">
+  <div v-if="isLoading && recommendedPOIs.length === 0">
     <p>Loading recommendations...</p>
   </div>
   <div v-else>
@@ -18,6 +18,7 @@
 
 
 <script setup lang="ts">
+defineOptions({ name: 'RecommendedView' })
 import PoiCard from '@/components/PoiCard.vue'
 import PoiService from '@/services/PoiService';
 import { useMapInfoStore } from '@/stores/mapInfo';
@@ -70,14 +71,14 @@ async function fetchOnce() {
   }
 }
 
-function startPolling() {
+function startPolling(resetLoading = true) {
   stopPolling()
-  isLoading.value = true
+  if (resetLoading && recommendedPOIs.value.length === 0) {
+    isLoading.value = true
+  }
   fetchOnce()
   timer = window.setInterval(() => {
-    // pause polling when the tab is hidden
-    if (document.hidden) return
-    fetchOnce()
+    if (!document.hidden) fetchOnce()
   }, POLL_MS)
 }
 
@@ -86,15 +87,14 @@ function stopPolling() {
   abort?.abort(); abort = null
 }
 
-onMounted(startPolling)
+onMounted(() =>
+  startPolling(true)
+)
 onUnmounted(stopPolling)
 onActivated(() => {
-  isLoading.value = true;
-  startPolling();
+  startPolling(false)
 })
-onDeactivated(() => {
-  stopPolling();
-})
+onDeactivated(stopPolling)
 
 watch(() => mapInfo.current_buildingId, startPolling)
 

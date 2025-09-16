@@ -31,9 +31,6 @@
         <font-awesome-icon icon="image" />
       </div>
     </div>
-    <!-- <div class="gallery" v-if="galleryImages?.length">
-      <img v-for="(src, i) in galleryImages" :key="i" :src="src" alt="POI image" />
-    </div> -->
 
     <!-- POI detail -->
     <p class="description" v-if="poi.detail">{{ poi.detail }}</p>
@@ -56,18 +53,11 @@ const uiStore = useUIMenuPanelStore()
 const building_id = mapInfo.current_buildingId
 const poi = ref<POI | null>(null);
 
-// const fetchData = async (id: string) => {
-//   uiStore.showDetail()
-//   poi.value = await PoiService.getPOIById(building_id, id);
-// };
 async function fetchData(id: string) {
   uiStore.showDetail()
   poi.value = await PoiService.getPOIById(building_id, id)
 }
 
-// onMounted(() => {
-//   fetchData(props.id);
-// });
 onMounted(() => { fetchData(props.id) })
 
 watch(() =>  props.id , () => {
@@ -77,28 +67,13 @@ watch(() =>  props.id , () => {
 
 // Build the gallery from poi.images (preferred) or single poi.image (fallback).
 // No repetition: we just show however many exist, capped at 3.
-// const galleryImages = computed(() => {
-//   const imgs = poi.value?.images
-//   return imgs?.slice(0, 3)
-// })
 const galleryImages = computed<string[]>(() => {
   const imgs = poi.value?.images ?? []
   return Array.isArray(imgs) ? imgs.filter(Boolean).slice(0, 3) : []
 })
 
-// function backToList() {
-//   const historyLength = window.history.length;
-//   if (historyLength > 1) {
-//     router.back();
-//   } else {
-//     router.push({ name: 'recommend' });
-//   }
-// }
 function backToList() {
-  // Go explicitly to the Recommend panel so it restores correctly
   router.push({ name: 'recommend' })
-  // If your panel store has a "list" mode, flip it here too (optional):
-  // uiStore.showList()
 }
 </script>
 

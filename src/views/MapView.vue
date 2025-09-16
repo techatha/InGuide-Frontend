@@ -6,7 +6,12 @@
       <SearchResultsView />
     </div>
     <div v-show="!uiStore.isSearchFocused">
-      <RouterView />
+      <RouterView v-slot="{ Component }">
+        <!-- Keep list cached make instantly visible when click Back -->
+        <keep-alive include="RecommendedView">
+          <component :is="Component" />
+        </keep-alive>
+      </RouterView>
     </div>
   </MenuPanel>
   <PopUpWindow name="popup" v-model:visible="showPopup">
