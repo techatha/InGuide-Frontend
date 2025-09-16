@@ -92,6 +92,7 @@ export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
     renderPaths,
     snapToPath,
     renderRoute,
+    clearWalkablePaths,
   }
 }
 

@@ -2,9 +2,10 @@
   <div
     class="panel"
     :class="{
-      expand: uiStore.isExpanded,
+      'expand': uiStore.isExpanded,
       'fully-expand': uiStore.isFullyExpanded,
-      detail: uiStore.isShowDetail,
+      'detail': uiStore.isShowDetail,
+      'navOverview': uiStore.isStartingNav,
     }"
   >
     <div

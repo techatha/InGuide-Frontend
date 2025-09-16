@@ -64,6 +64,7 @@ const changeFloorPlan = async (floor: Floor) => {
   beaconStore.loadBeacons(newBeacons)
   // path.renderFloorPaths(build_id, floor.id)
   mapInfo.current_floor = floor
+  path.clearWalkablePaths()
 }
 
 onMounted(async () => {

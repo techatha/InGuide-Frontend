@@ -26,6 +26,10 @@
   height: 45vh;
 }
 
+.panel.navOverview {
+  height: 20vh;
+}
+
 .drag-bar {
   width: 100px;
   height: 5px;

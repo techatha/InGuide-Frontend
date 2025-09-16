@@ -6,7 +6,7 @@
       <SearchResultsView />
     </div>
     <div v-show="!uiStore.isSearchFocused">
-      <RouterView v-slot="{ Component }">
+      <RouterView @navigate-to="generateRoute" v-slot="{ Component }">
         <!-- Keep list cached make instantly visible when click Back -->
         <keep-alive include="RecommendedView">
           <component :is="Component" />
@@ -36,6 +36,10 @@ import MenuPanel from '@/components/MenuPanel.vue'
 import SearchResultsView from './panelViews/SearchResultsView.vue'
 import { findNearestBeacon } from '@/utils/findNearestBeacon'
 import type { Beacon } from '@/types/beacon'
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
 
 const showPopup = ref(false)
 const isPermissionGranted = ref(false)
@@ -111,6 +115,7 @@ const generateRoute = async (poiId: string) => {
 
   // draw
   props.mapDisplayRef.renderRoute(pathIds, clonedGraph)
+  router.push({ name: "navigationOverview", params: { id: route.params.id } })
 }
 
 watch(

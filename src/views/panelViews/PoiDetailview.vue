@@ -55,10 +55,6 @@ const poi = ref<POI | null>(null);
 
 defineEmits<{ (e: 'navigate-to', poiId: string): void }>()
 
-// const fetchData = async (id: string) => {
-//   uiStore.showDetail()
-//   poi.value = await PoiService.getPOIById(building_id, id);
-// };
 async function fetchData(id: string) {
   uiStore.showDetail()
   poi.value = await PoiService.getPOIById(building_id, id)
