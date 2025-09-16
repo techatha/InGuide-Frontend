@@ -13,7 +13,7 @@
         </button>
         <h1 class="header-poi-name">{{ poi.name }}</h1>
       </div>
-      <button class="navigate-btn" @click="console.log('start nav!')">Navigate</button>
+      <button class="navigate-btn" @click="$emit('navigate-to', poi.id)">Navigate</button>
     </div>
 
     <!-- POI type + it's floor -->
@@ -53,6 +53,12 @@ const uiStore = useUIMenuPanelStore()
 const building_id = mapInfo.current_buildingId
 const poi = ref<POI | null>(null);
 
+defineEmits<{ (e: 'navigate-to', poiId: string): void }>()
+
+// const fetchData = async (id: string) => {
+//   uiStore.showDetail()
+//   poi.value = await PoiService.getPOIById(building_id, id);
+// };
 async function fetchData(id: string) {
   uiStore.showDetail()
   poi.value = await PoiService.getPOIById(building_id, id)

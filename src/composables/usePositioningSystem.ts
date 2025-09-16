@@ -134,7 +134,7 @@ export function usePositioningSystem() {
       const prob: PredictionResponse = await localModel.predictLocal(preprocessedData)
       latestPrediction.value = prob
 
-      console.log(prob)
+      // console.log(prob)
 
       // KF1 prediction (world-frame inertial)
       kf1.predict(

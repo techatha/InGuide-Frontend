@@ -94,6 +94,25 @@ const requestPermissions = async () => {
   }
 }
 
+const generateRoute = async (poiId: string) => {
+  // console.log(`generate a route to ${poiId}`)
+  const userPos = position.getPosition()
+  const snappedPos = await props.mapDisplayRef.snapToPath(
+    mapInfo.current_buildingId,
+    mapInfo.current_floor.id,
+    userPos,
+  )
+  // console.log("finding path")
+  // run aStar (temp_start → poiId)
+  const {
+    pathIds,
+    clonedGraph,
+  } = await props.mapDisplayRef.findPath(snappedPos, poiId)
+
+  // draw
+  props.mapDisplayRef.renderRoute(pathIds, clonedGraph)
+}
+
 watch(
   () => mapInfo.isMapInitialized,
   (isInitialized) => {

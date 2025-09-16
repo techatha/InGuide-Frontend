@@ -4,30 +4,48 @@ import pathService from '@/services/PathService'
 import { type Ref } from 'vue'
 import type { Map, PolylineOptions } from 'leaflet'
 import L from 'leaflet'
+import type { NavigationGraph } from '@/types/path'
 
 export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
-  async function renderPaths(buildingId: string, floorId: string) {
+  async function renderFloorPaths(buildingId: string, floorId: string) {
     try {
       const graph = await pathService.loadPath(buildingId, floorId)
-      clearWalkablePaths()
-      graph.adjacencyList.forEach((edges, startNodeId) => {
-        const startNode = graph.nodes.get(startNodeId)
-        edges.forEach((edge) => {
-          const endNode = graph.nodes.get(edge.targetNodeId)
-          if (!endNode) return
-          const path = [startNode?.coordinates, endNode?.coordinates] as [
-            [number, number],
-            [number, number],
-          ]
-          setWalkablePath(path, availablePath)
-        })
-      })
+      renderPaths(graph)
     } catch (error) {
       console.log(error)
     }
   }
 
-  
+  async function renderPaths(graph: NavigationGraph) {
+    clearWalkablePaths()
+    graph.adjacencyList.forEach((edges, startNodeId) => {
+      const startNode = graph.nodes.get(startNodeId)
+      edges.forEach((edge) => {
+        const endNode = graph.nodes.get(edge.targetNodeId)
+        if (!endNode) return
+        const path = [startNode?.coordinates, endNode?.coordinates] as [
+          [number, number],
+          [number, number],
+        ]
+        setWalkablePath(path, availablePath)
+      })
+    })
+  }
+
+  function renderRoute(pathIds: string[], graph: NavigationGraph) {
+    clearWalkablePaths()
+
+    const coords: [number, number][] = []
+    for (const id of pathIds) {
+      const node = graph.nodes.get(id)
+      if (node) coords.push(node.coordinates)
+    }
+
+    if (coords.length > 1) {
+      const polyline = L.polyline(coords, availablePath)
+      polyline.addTo(pathLayer)
+    }
+  }
 
   async function snapToPath(
     buildingId: string,
@@ -60,7 +78,6 @@ export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
     return result
   }
 
-
   function setWalkablePath(latlng: [[number, number], [number, number]], style: PolylineOptions) {
     const newPath = L.polyline(latlng, style)
     newPath.addTo(pathLayer)
@@ -71,8 +88,10 @@ export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
   }
 
   return {
+    renderFloorPaths,
     renderPaths,
     snapToPath,
+    renderRoute,
   }
 }
 
