@@ -32,6 +32,10 @@ import type { POI } from '@/types/poi'
 import { usePOI } from '@/composables/usePOI'
 import L from 'leaflet'
 import { usePath } from '@/composables/usePath'
+import type { NavigationGraph } from '@/types/path'
+import { findPathAStar } from '@/utils/AStarPathFinding'
+import { cloneGraph, addTemporaryNode } from '@/utils/AddTempNode'
+import { convertToGraph } from '@/utils/covertToGraph'
 
 const map = ref<L.Map | null>(null)
 const poiLayer = L.layerGroup()
@@ -58,7 +62,7 @@ const changeFloorPlan = async (floor: Floor) => {
   mapInfo.loadPOIs(newPOIs)
   const newBeacons = await beaconService.getBeacons(build_id, floor.id)
   beaconStore.loadBeacons(newBeacons)
-  path.renderPaths(build_id, floor.id)
+  // path.renderFloorPaths(build_id, floor.id)
   mapInfo.current_floor = floor
 }
 
@@ -97,40 +101,58 @@ watch(
 // Define Expose Functions
 async function snapToPath(buildingId: string, floorId: string, position: [number, number]) {
   if (!position[0] || !position[1]) {
-    console.warn("Skipping snapToPath because latlng is null")
+    console.warn('Skipping snapToPath because latlng is null')
     return
   }
   return await path.snapToPath(buildingId, floorId, position)
 }
-function setUserPosition(newLatLng: [number, number], headingRad: number){
+function setUserPosition(newLatLng: [number, number], headingRad: number) {
   if (!newLatLng[0] || !newLatLng[1]) {
-    console.warn("Skipping setUserPosition because latlng is null")
+    console.warn('Skipping setUserPosition because latlng is null')
     return
   }
   mapDisplay.setUserPosition(newLatLng, headingRad)
 }
 function setUserDebugPosition(newLatLng: [number, number]) {
   if (!newLatLng[0] || !newLatLng[1]) {
-    console.warn("Skipping setUserDebugPosition because latlng is null")
+    console.warn('Skipping setUserDebugPosition because latlng is null')
     return
   }
   mapDisplay.setUserDebugPosition(newLatLng)
 }
-function renderPaths(buildingId: string, floorId: string) {
-  path.renderPaths(buildingId, floorId)
+function renderPaths(graph: NavigationGraph) {
+  path.renderPaths(graph)
 }
-// function renderPathNode(){
-
-// }
+function renderRoute(pathIds: string[], graph: NavigationGraph) {
+  path.renderRoute(pathIds, graph)
+}
 function renderPOIs(pois: POI[]) {
   poi.renderPOIs(pois)
 }
+async function findPath(start: [number, number], targetPoiId: string) {
+  const JSONgraph: NavigationGraph = mapInfo.current_floor.graph as NavigationGraph
+  if (!JSONgraph) throw new Error('Navigation graph not loaded')
 
-defineExpose ({
+  const graph = convertToGraph(JSONgraph.nodes, JSONgraph.adjacencyList)
+  const clonedGraph = cloneGraph(graph)
+  const userNodeId = addTemporaryNode(clonedGraph, start)
+
+  // Run your existing A* (should accept NavigationGraph & node IDs)
+  const pathIds = findPathAStar(clonedGraph, userNodeId, targetPoiId)
+  console.log(pathIds)
+  return {
+    pathIds,
+    clonedGraph,
+  }
+}
+
+defineExpose({
   snapToPath,
   setUserPosition,
   setUserDebugPosition,
   renderPaths,
+  renderRoute,
   renderPOIs,
+  findPath,
 })
 </script>

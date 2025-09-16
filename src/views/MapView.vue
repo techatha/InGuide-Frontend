@@ -6,7 +6,7 @@
       <SearchResultsView />
     </div>
     <div v-show="!uiStore.isSearchFocused">
-      <RouterView />
+      <RouterView @navigate-to="generateRoute"/>
     </div>
   </MenuPanel>
   <PopUpWindow name="popup" v-model:visible="showPopup">
@@ -87,6 +87,25 @@ const requestPermissions = async () => {
   if (isPermissionGranted.value) {
     showPopup.value = false // close only when granted
   }
+}
+
+const generateRoute = async (poiId: string) => {
+  // console.log(`generate a route to ${poiId}`)
+  const userPos = position.getPosition()
+  const snappedPos = await props.mapDisplayRef.snapToPath(
+    mapInfo.current_buildingId,
+    mapInfo.current_floor.id,
+    userPos,
+  )
+  // console.log("finding path")
+  // run aStar (temp_start → poiId)
+  const {
+    pathIds,
+    clonedGraph,
+  } = await props.mapDisplayRef.findPath(snappedPos, poiId)
+
+  // draw
+  props.mapDisplayRef.renderRoute(pathIds, clonedGraph)
 }
 
 watch(
