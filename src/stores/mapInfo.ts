@@ -11,6 +11,7 @@ export const useMapInfoStore = defineStore('mapInfo', () => {
   const floors = ref<Floor[]>([]);
   const POIs = ref<POI[]>([])
   const current_floor = ref<Floor>(dummyFloor);
+  const recommenedPois = ref<POI[]>([])
 
   function changeBuilding(buildingId: string) {
     current_buildingId.value = buildingId;
@@ -22,6 +23,10 @@ export const useMapInfoStore = defineStore('mapInfo', () => {
 
   function loadPOIs(pois: POI[]) {
     POIs.value = pois;
+  }
+
+  function loadRecommended(pois: POI[]) {
+    recommenedPois.value = pois
   }
 
   function loadFloors(floorList: Floor[]) {
@@ -43,5 +48,7 @@ export const useMapInfoStore = defineStore('mapInfo', () => {
     changeBuilding,
     changeCurrentFloor,
     loadFloors,
+    loadRecommended,
+    recommenedPois,
   };
 });

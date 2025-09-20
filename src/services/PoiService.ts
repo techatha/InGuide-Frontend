@@ -2,7 +2,6 @@ import axios from 'axios'
 
 const httpClient = axios.create({
   baseURL: import.meta.env.VITE_BACKEND_URL,
-  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -16,12 +15,12 @@ const httpClient = axios.create({
  */
 async function getPOIs(buildingId: string, floorId: string) {
   try {
-    const response = await httpClient.get(`/POIs/${buildingId}/${floorId}`);
+    const response = await httpClient.get(`/POIs/${buildingId}/${floorId}`)
 
-    return response.data;
+    return response.data
   } catch (err) {
-    console.error(`Error getting POIs on floor ${floorId}...`, err);
-    throw err;
+    console.error(`Error getting POIs on floor ${floorId}...`, err)
+    throw err
   }
 }
 
@@ -33,18 +32,23 @@ async function getPOIs(buildingId: string, floorId: string) {
  */
 async function getPOIById(buildingId: string, poiId: string) {
   try {
-    const response = await httpClient.get(`/POIs/POI_info/${buildingId}/${poiId}`);
+    const response = await httpClient.get(`/POIs/POI_info/${buildingId}/${poiId}`)
 
-    return response.data;
+    return response.data
   } catch (err) {
-    console.error(`Error getting POI id: ${poiId}...`, err);
-    throw err;
+    console.error(`Error getting POI id: ${poiId}...`, err)
+    throw err
   }
 }
 
 async function getRecommendedInBuilding(buildingId: string, signal?: AbortSignal) {
-  const res = await httpClient.get(`/POIs/${buildingId}/recommended`, { signal })
-  return res.data
+  try {
+    const res = await httpClient.get(`/POIs/${buildingId}/recommended`, { signal })
+    return res.data
+  } catch (error) {
+    console.error(`Error getting recommendation from building id: ${buildingId}...`, error)
+    throw error
+  }
 }
 
 async function getRecommendedOnFloor(buildingId: string, floorId: string, signal?: AbortSignal) {
@@ -56,5 +60,5 @@ export default {
   getPOIs,
   getPOIById,
   getRecommendedInBuilding,
-  getRecommendedOnFloor
+  getRecommendedOnFloor,
 }
