@@ -1,8 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MapView from '@/views/MapView.vue'
-import PoiDetail from '@/views/panelViews/PoiDetailView.vue'
-import RecommendedView from '@/views/panelViews/RecommendedView.vue'
-import RouteOverviewView from '@/views/panelViews/RouteOverviewView.vue'
+import PoiDetail from '@/views/mapPanelViews/PoiDetailView.vue'
+import RecommendedView from '@/views/mapPanelViews/RecommendedView.vue'
+import RouteOverviewView from '@/views/mapPanelViews/RouteOverviewView.vue'
+import NavigationView from '@/views/NavigationView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,8 +28,8 @@ const router = createRouter({
           path: 'navigate/:id',
           name: 'navigationOverview',
           component: RouteOverviewView,
-          props: true
-        }
+          props: true,
+        },
       ],
     },
     {
@@ -39,6 +40,11 @@ const router = createRouter({
         localStorage.setItem('beaconID', beaconID)
         return { name: 'home' }
       },
+    },
+    {
+      path: '/navigating/:destinationID',
+      name: 'navigateUser',
+      component: NavigationView,
     },
   ],
 })
