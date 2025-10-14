@@ -21,7 +21,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, type Ref } from 'vue'
 import 'leaflet/dist/leaflet.css'
-import { getFloors } from '@/services/buildingService'
+import buildingService from '@/services/buildingService'
 import PoiService from '@/services/PoiService'
 import beaconService from '@/services/beaconService'
 import { useMapInfoStore } from '@/stores/mapInfo'
@@ -65,11 +65,15 @@ const changeFloorPlan = async (floor: Floor) => {
   // path.renderFloorPaths(build_id, floor.id)
   mapInfo.current_floor = floor
   path.clearWalkablePaths()
+
+  // reload new POIs
+  const allPOIs = await PoiService.getAllPOIs(build_id)
+  mapInfo.loadBuildingAllPois(allPOIs)
 }
 
 onMounted(async () => {
   const build_id = mapInfo.current_buildingId
-  const floors: Floor[] = await getFloors(build_id)
+  const floors: Floor[] = await buildingService.getFloors(build_id)
   mapInfo.loadFloors(floors)
   mapInfo.current_floor = floors[0]
   const POIs: POI[] = await PoiService.getPOIs(build_id, floors[0].id)
@@ -85,7 +89,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => mapInfo.POIs,
+  () => mapInfo.floorPOIs,
   (pois) => {
     poi.removePOIs()
     poi.renderPOIs(pois)
@@ -130,7 +134,13 @@ function renderRoute(pathIds: string[], graph: NavigationGraph) {
 function renderPOIs(pois: POI[]) {
   poi.renderPOIs(pois)
 }
-async function findPath(start: [number, number], targetPoiId: string) {
+
+type findPathResult = {
+  pathIds: string[] | null,
+  clonedGraph: NavigationGraph
+}
+
+function findPath(start: [number, number], targetPoiId: string): findPathResult {
   const JSONgraph: NavigationGraph = mapInfo.current_floor.graph as NavigationGraph
   if (!JSONgraph) throw new Error('Navigation graph not loaded')
 
@@ -140,10 +150,10 @@ async function findPath(start: [number, number], targetPoiId: string) {
 
   // Run your existing A* (should accept NavigationGraph & node IDs)
   const pathIds = findPathAStar(clonedGraph, userNodeId, targetPoiId)
-  console.log(pathIds)
+  // console.log(pathIds)
   return {
-    pathIds,
-    clonedGraph,
+    pathIds: pathIds,
+    clonedGraph: clonedGraph,
   }
 }
 

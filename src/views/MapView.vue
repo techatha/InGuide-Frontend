@@ -37,6 +37,7 @@ import SearchResultsView from '@/views/mapPanelViews/SearchResultsView.vue'
 import { findNearestBeacon } from '@/utils/findNearestBeacon'
 import type { Beacon } from '@/types/beacon'
 import { useRoute, useRouter } from 'vue-router'
+import { useNavigationStore } from '@/stores/navigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -46,6 +47,7 @@ const isPermissionGranted = ref(false)
 const mapInfo = useMapInfoStore()
 const uiStore = useUIMenuPanelStore()
 const beaconStore = useBeaconStore()
+const navigationStore = useNavigationStore()
 
 const props = defineProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,7 +57,10 @@ const position = usePositioningSystem()
 
 const initPosition = async () => {
   const initBeacon = localStorage.getItem('beaconID')
-  const latLng = beaconStore.findBeaconById(initBeacon ?? '').latLng
+  const checkedBeacon = await beaconStore.findBeaconById(initBeacon ?? '')
+  const latLng = checkedBeacon.latLng
+  console.log(initBeacon)
+  console.log(latLng)
   const snappedLatLng = await props.mapDisplayRef.snapToPath(
     mapInfo.current_buildingId,
     mapInfo.current_floor.id,
@@ -78,7 +83,7 @@ const initPosition = async () => {
       position.resetToBeacon(nearestBeacon?.beacon as Beacon)
 
     props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
-    // props.mapDisplayRef.setUserDebugPosition(userPos)
+    props.mapDisplayRef.setUserDebugPosition(userPos)
   }, 1000)
 
   // setInterval(() => {
@@ -95,6 +100,7 @@ const requestPermissions = async () => {
 
   if (isPermissionGranted.value) {
     showPopup.value = false // close only when granted
+    initPosition()
   }
 }
 
@@ -108,14 +114,17 @@ const generateRoute = async (poiId: string) => {
   )
   // console.log("finding path")
   // run aStar (temp_start → poiId)
-  const {
-    pathIds,
-    clonedGraph,
-  } = await props.mapDisplayRef.findPath(snappedPos, poiId)
+  const { pathIds, clonedGraph } = await props.mapDisplayRef.findPath(snappedPos, poiId)
+
+  // console.log(pathIds)
+  // console.log(clonedGraph)
+
+  navigationStore.setNavigationRoute(pathIds)
+  navigationStore.setNavigationGraph(clonedGraph)
 
   // draw
   props.mapDisplayRef.renderRoute(pathIds, clonedGraph)
-  router.push({ name: "navigationOverview", params: { id: route.params.id } })
+  router.push({ name: 'navigationOverview', params: { id: route.params.id } })
 }
 
 watch(
@@ -125,7 +134,7 @@ watch(
       console.log('Map is ready, rendering paths and POIs!')
       // props.mapDisplayRef.renderPaths(mapInfo.current_buildingId, mapInfo.current_floor.id)
 
-      const POIs = mapInfo.POIs
+      const POIs = mapInfo.floorPOIs
       props.mapDisplayRef.renderPOIs(POIs)
 
       setTimeout(() => {
@@ -140,13 +149,6 @@ watch(
   () => uiStore.isSearchFocused,
   () => {
     uiStore.fullExpand()
-  },
-)
-
-watch(
-  () => isPermissionGranted.value,
-  (p) => {
-    if (p) initPosition()
   },
 )
 </script>

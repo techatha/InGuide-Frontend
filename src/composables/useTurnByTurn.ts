@@ -1,11 +1,15 @@
 import { ref, computed } from 'vue'
 import * as turf from '@turf/turf'
 import type { NavigationGraph } from '@/types/path'
+import { useNavigationStore } from '@/stores/navigation'
 
 export function useTurnByTurn() {
+  const navigationStore = useNavigationStore()
+
   const instructions = ref<string[]>([])
   const currentStepIndex = ref(0)
   const currentInstruction = computed(() => instructions.value[currentStepIndex.value] ?? null)
+  const nextInstruction = computed(() => instructions.value[currentStepIndex.value + 1] ?? null)
 
   /**
    * Generate turn-by-turn instructions from path + graph
@@ -44,7 +48,12 @@ export function useTurnByTurn() {
   /**
    * Update user's progress along the path
    */
-  function updateUserProgress(userPos: [number, number], pathIds: string[], graph: NavigationGraph) {
+  function updateUserProgress(
+    userPos: [number, number],
+    pathIds: string[] = navigationStore.navigationRoute,
+    graph= navigationStore.navigationGraph,
+  ) {
+    if(!graph) return
     // Find the closest segment to user position
     let closestIndex = 0
     let minDist = Infinity
@@ -72,6 +81,8 @@ export function useTurnByTurn() {
   }
 
   return {
+    currentStepIndex,
+    nextInstruction,
     instructions,
     currentInstruction,
     generateInstructions,

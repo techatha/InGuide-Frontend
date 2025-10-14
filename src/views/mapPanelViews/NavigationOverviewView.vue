@@ -1,7 +1,7 @@
 <template>
   <div class="overview-row" v-if="poi">
     <p class="description">Destination: {{ poi.name }}</p>
-    <button class="navigate-btn">Start</button>
+    <button class="navigate-btn" @click="startNavigate">Start</button>
   </div>
 </template>
 
@@ -11,18 +11,37 @@ import { useRoute } from "vue-router"
 import { useMapInfoStore } from "@/stores/mapInfo"
 import PoiService from "@/services/PoiService"
 import { useUIMenuPanelStore } from "@/stores/uiMenuPanel"
+import { useNavigationStore } from "@/stores/navigation"
+import type { POI } from "@/types/poi"
+import router from "@/router"
 
 const route = useRoute()
 const mapInfo = useMapInfoStore()
 const uiStore = useUIMenuPanelStore()
+const naviationStore = useNavigationStore()
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const poi = ref<any>(null)
+const poi = ref<POI | null>(null)
 
 onMounted(async () => {
   uiStore.startNavigate()
   poi.value = await PoiService.getPOIById(mapInfo.current_buildingId, route.params.id as string)
 })
+
+const startNavigate = () => {
+  naviationStore.clearNavigation()
+  try {
+    if(!poi.value) {
+      console.error("There is no destination selected")
+    }
+    console.log(poi.value?.id)
+    naviationStore.setDestination(poi.value?.id ?? '')
+
+    // router push
+    router.push({name: "navigate", params: { id: route.params.id } })
+  } catch (error) {
+    console.error("There is an error on start navigation", error)
+  }
+}
 </script>
 
 <style>

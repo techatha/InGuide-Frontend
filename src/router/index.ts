@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import MapView from '@/views/MapView.vue'
 import PoiDetail from '@/views/mapPanelViews/PoiDetailView.vue'
 import RecommendedView from '@/views/mapPanelViews/RecommendedView.vue'
-import RouteOverviewView from '@/views/mapPanelViews/RouteOverviewView.vue'
+import NavigationOverviewView from '@/views/mapPanelViews/NavigationOverviewView.vue'
 import NavigationView from '@/views/NavigationView.vue'
 
 const router = createRouter({
@@ -25,9 +25,9 @@ const router = createRouter({
           props: true,
         },
         {
-          path: 'navigate/:id',
+          path: 'overview/:id',
           name: 'navigationOverview',
-          component: RouteOverviewView,
+          component: NavigationOverviewView,
           props: true,
         },
       ],
@@ -42,8 +42,8 @@ const router = createRouter({
       },
     },
     {
-      path: '/navigating/:destinationID',
-      name: 'navigateUser',
+      path: '/navigate/:id',
+      name: 'navigate',
       component: NavigationView,
     },
   ],

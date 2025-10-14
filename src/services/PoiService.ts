@@ -13,6 +13,23 @@ const httpClient = axios.create({
  * @param floor specify a floor of this building to retrieve POIs.
  * @returns A Promise that resolves to the list of POIs on the selected floor of the building.
  */
+async function getAllPOIs(buildingId: string) {
+  try {
+    const response = await httpClient.get(`/POIs/${buildingId}`)
+
+    return response.data
+  } catch (err) {
+    console.error(`Error getting all POIs from ${buildingId}...`, err)
+    throw err
+  }
+}
+
+/**
+ * Request a list of POIs on a specific floor and building.
+ * @param buildingId object id of the building.
+ * @param floor specify a floor of this building to retrieve POIs.
+ * @returns A Promise that resolves to the list of POIs on the selected floor of the building.
+ */
 async function getPOIs(buildingId: string, floorId: string) {
   try {
     const response = await httpClient.get(`/POIs/${buildingId}/${floorId}`)
@@ -57,6 +74,7 @@ async function getRecommendedOnFloor(buildingId: string, floorId: string, signal
 }
 
 export default {
+  getAllPOIs,
   getPOIs,
   getPOIById,
   getRecommendedInBuilding,

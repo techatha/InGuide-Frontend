@@ -2,24 +2,76 @@
   <div id="navigation-top-container">
     <div id="instruction-box">
       <div>
-        <div id="turn-icon">Turn right</div> <p>1 m.</p>
+        <div id="turn-icon">{{ currentInstruction }}</div>
+        <p>1 m.</p>
       </div>
-      <p id="instruction-text">Turn right</p> </div>
-    <div id="next-turn-box">
-        Then <span id="next-turn-arrow">↑</span>
+      <p id="instruction-text" v-if="nextInstruction">{{ nextInstruction }}</p>
     </div>
+    <div id="next-turn-box">Then <span id="next-turn-arrow">↑</span></div>
   </div>
   <div id="navigation-bottom-container">
     <p id="time-to-destination">3 min</p>
     <div id="bottom-details">
       <p>20 m.</p>
       <p>12:03</p>
-      <button id="exit-button">Exit</button>
+      <button id="exit-button" @click="handleExit">Exit</button>
     </div>
   </div>
 </template>
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { useNavigationStore } from '@/stores/navigation'
+import { useTurnByTurn } from '@/composables/useTurnByTurn'
+import { findNearestBeacon } from '@/utils/findNearestBeacon'
+import { usePositioningSystem } from '@/composables/usePositioningSystem'
+import { useMapInfoStore } from '@/stores/mapInfo'
+import type { Beacon } from '@/types/beacon'
+import { useBeaconStore } from '@/stores/beacon'
+import router from '@/router'
 
+const mapInfo = useMapInfoStore()
+const beaconStore = useBeaconStore()
+const navigationStore = useNavigationStore()
+const { currentInstruction, nextInstruction, generateInstructions, updateUserProgress } =
+  useTurnByTurn()
+const props = defineProps<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mapDisplayRef: any
+}>()
+const position = usePositioningSystem()
+
+onMounted(() => {
+  if (navigationStore.navigationRoute.length > 0) {
+    if(navigationStore.navigationGraph)
+    generateInstructions(navigationStore.navigationRoute, navigationStore.navigationGraph)
+  }
+
+  setInterval(async () => {
+    // console.log("UI Updated")
+    const userPos = position.getPosition()
+    const snappedPos = await props.mapDisplayRef.snapToPath(
+      mapInfo.current_buildingId,
+      mapInfo.current_floor.id,
+      userPos,
+    )
+    const heading = position.getRadHeading()
+    // console.log("heading :", heading)
+    const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.beacons as Beacon[])
+    if (nearestBeacon && nearestBeacon?.distance < 0.01)
+      position.resetToBeacon(nearestBeacon?.beacon as Beacon)
+
+    props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
+    props.mapDisplayRef.setUserDebugPosition(userPos)
+
+    updateUserProgress(position.getPosition(), )
+  }, 1000)
+})
+
+function handleExit() {
+  navigationStore.clearNavigation();
+  // Add logic here to switch the view back to the main map
+  router.push({name: 'recommend'})
+}
 </script>
 <style>
 /*
@@ -35,7 +87,6 @@
   /* Add background map/image here if needed */
   background-color: #e8e8e8; /* Light gray background */
 }
-
 
 /*
  * TOP INSTRUCTION BOX STYLES
@@ -111,8 +162,8 @@
 }
 
 #next-turn-arrow {
-    display: block; /* Ensure the arrow is on its own line or centered */
-    font-size: 18px;
+  display: block; /* Ensure the arrow is on its own line or centered */
+  font-size: 18px;
 }
 
 /*

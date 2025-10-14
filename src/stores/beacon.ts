@@ -21,8 +21,11 @@ export const useBeaconStore = defineStore('beacon', () => {
   }
 
   function findBeaconById(beaconId: string): Beacon  {
+    console.log("ckeck", !beacons.value)
+    console.log(beacons.value?.length)
     if (!beacons.value) return dummyBeacon
-    return beacons.value.find(b => b.beaconId === beaconId) || dummyBeacon
+    const trimmedIdToFind = beaconId.trim();
+    return beacons.value.find(b => b.beaconId === trimmedIdToFind) ?? dummyBeacon
   }
 
   return { beacons, loadBeacons, clearBeacons, findBeaconById }

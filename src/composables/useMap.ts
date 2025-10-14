@@ -11,6 +11,7 @@ export function useMap(map: Ref<Map | null>) {
     return new Promise<void>((resolve, reject) => {
       map.value = L.map(mapContainer, {
         zoomControl: false,
+        attributionControl: false,
       }).fitBounds(_mapBound)
       toRaw(map.value).createPane('userPane').style.zIndex = '999'
       _mapImageOverlay = L.imageOverlay(mockMap, _mapBound)
