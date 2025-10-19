@@ -28,7 +28,6 @@ onMounted(async () => {
 })
 
 const startNavigate = () => {
-  naviationStore.clearNavigation()
   try {
     if(!poi.value) {
       console.error("There is no destination selected")

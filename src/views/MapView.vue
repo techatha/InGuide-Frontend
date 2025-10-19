@@ -116,8 +116,8 @@ const generateRoute = async (poiId: string) => {
   // run aStar (temp_start → poiId)
   const { pathIds, clonedGraph } = await props.mapDisplayRef.findPath(snappedPos, poiId)
 
-  // console.log(pathIds)
-  // console.log(clonedGraph)
+  console.log(pathIds)
+  console.log(clonedGraph)
 
   navigationStore.setNavigationRoute(pathIds)
   navigationStore.setNavigationGraph(clonedGraph)

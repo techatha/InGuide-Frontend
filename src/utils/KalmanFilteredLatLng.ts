@@ -71,16 +71,26 @@ export function KalmanFilteredLatLng() {
   }
 
   /** Update KF1 with a "measurement" from GPS or KF2 output (lat/lng only) */
-  function update(lat: number, lng: number) {
+  function update(lat: number, lng: number, confidenceNoise?: number) {
     if (!kf.value) throw new Error('KF1 not initialized')
 
     const ENU = coordsTransform.latLngToENU(lat, lng)
-    const z = math.matrix([[ENU[0]], [ENU[1]]]) // heading excluded
+    const z = math.matrix([[ENU[0]], [ENU[1]]]) // measurement vector
 
-    kf.value.update(z)
+    let R_override: math.Matrix | undefined = undefined;
+
+    // If a specific confidence is provided, create a temporary R matrix for this update.
+    if (confidenceNoise !== undefined) {
+      R_override = math.diag([confidenceNoise, confidenceNoise]);
+    }
+
+    // Call the underlying filter's update method.
+    // If R_override is undefined, the filter will use its default R matrix.
+    kf.value.update(z, R_override)
 
     return getLatLng()
   }
+
 
   /** Return fused lat/lng from KF1 */
   function getLatLng(): [number, number] {

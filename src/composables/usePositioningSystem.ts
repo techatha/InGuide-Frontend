@@ -20,8 +20,8 @@ const imu = useIMU()
 const orien = useDeviceOrientation()
 
 /** ======== Filters ======== */
-const kf2 = KalmanFilteredPosition() // display & final positioning
-const kf1 = KalmanFilteredLatLng() // fusion of inertial + prob
+const kf1 = KalmanFilteredLatLng() // Core fusion filter (inertial + GPS + map matching)
+const kf2 = KalmanFilteredPosition() // Smoothed display filter
 
 /** ======== Data Buffers ======== */
 const imuBuffer: IMUData[] = []
@@ -32,25 +32,22 @@ const latestGPSLat = ref<number | null>(null)
 const latestGPSLng = ref<number | null>(null)
 const latestIMUData = ref<IMUData | null>(null)
 const latestPrediction = ref<PredictionResponse | null>(null)
-// const isSubmittingPrediction = ref(false)
 
 export function usePositioningSystem() {
-  /** ======== Initialization ======== */
+  /**
+   * Initializes all sensors and filters.
+   */
   function init(
     latLng: [number, number],
     interval: number = 500,
     windowSize: number = 4000,
-    // predictInterval: number = 1000,
   ): boolean {
     gps.init()
-
     localModel.loadLocalModel()
-
     windowBuffer.setSize(windowSize, interval)
     const heading = orien.heading.value ?? 0
 
     if (!kf2.isInitialized()) {
-      // console.log("kh2 init with", latLng)
       kf2.init(latLng[0], latLng[1], (heading * Math.PI) / 180)
     }
 
@@ -58,7 +55,7 @@ export function usePositioningSystem() {
       kf1.init(latLng[0], latLng[1], (heading * Math.PI) / 180)
     }
 
-    /** ======== Watchers ======== */
+    /** Watch for new GPS readings (Low Confidence Update) */
     watch([gps.lat, gps.lng], ([lat, lng]) => {
       if (
         lat != null &&
@@ -67,11 +64,12 @@ export function usePositioningSystem() {
       ) {
         latestGPSLat.value = lat
         latestGPSLng.value = lng
-        // console.log("gps read", [lat, lng])
+        // Update kf1 with default (high) noise for GPS
         kf1.update(latestGPSLat.value, latestGPSLng.value)
       }
     })
 
+    /** Watch for heading changes to update the final display filter */
     watch(orien.heading, (h) => {
       if (h != null) {
         const kf1LatLng = kf1.getLatLng()
@@ -79,6 +77,7 @@ export function usePositioningSystem() {
       }
     })
 
+    /** Watch for new IMU readings and buffer them */
     watch(imu.IMUReading, (imuData) => {
       if (imuData) {
         latestIMUData.value = imuData
@@ -86,11 +85,11 @@ export function usePositioningSystem() {
       }
     })
 
-    /** ======== Prediction Loop ======== */
+    /** Main processing and prediction loop */
     setInterval(async () => {
       if (!latestIMUData.value || imuBuffer.length === 0) return
 
-      // Average accelerometer & gyro over buffer
+      // Average sensor data from the buffer
       const acc = imuBuffer.reduce(
         (acc, curr) => ({
           x: (acc.x ?? 0) + (curr.accelerometer.x ?? 0),
@@ -114,35 +113,27 @@ export function usePositioningSystem() {
       if (gyro.alpha) gyro.alpha /= imuBuffer.length
       if (gyro.beta) gyro.beta /= imuBuffer.length
       if (gyro.gamma) gyro.gamma /= imuBuffer.length
-
-      imuBuffer.length = 0 // clear after processing
+      imuBuffer.length = 0
 
       const orient: RotationRate = {
         alpha: orien.alpha.value,
         beta: orien.beta.value,
-        gamma: orien.gamma.value
+        gamma: orien.gamma.value,
       }
 
-      // console.log(orient)
-      // Rotate into world frame
+      // Rotate acceleration into world frame for dead reckoning
       const worldAcc = rotateToWorldFrame(acc, orient)
       const headingRad = ((orien.heading.value ?? 0) * Math.PI) / 180
       const gyroYawRateRad = gyro.alpha ? (gyro.alpha * Math.PI) / 180 : 0
 
+      // Get model prediction
       const window = windowBuffer.getWindowData()
       const preprocessedData = preprocess(window, windowBuffer.getInterval())
       const prob: PredictionResponse = await localModel.predictLocal(preprocessedData)
       latestPrediction.value = prob
 
-      // console.log(prob)
-
-      // KF1 prediction (world-frame inertial)
-      kf1.predict(
-        worldAcc,
-        headingRad,
-        interval / 1000,
-        prob.prediction as number,
-      )
+      // Run predict step on both filters
+      kf1.predict(worldAcc, headingRad, interval / 1000, prob.prediction as number)
       kf2.predict(
         prob.prediction as number,
         worldAcc,
@@ -152,22 +143,26 @@ export function usePositioningSystem() {
       )
     }, 500)
 
-    /** ======== Window Buffer ======== */
+    /** Window Buffer Loop */
     setInterval(() => {
       pushToWindowBuffer()
     }, interval)
 
-    /** ======== Remote Prediction ======== */
-    // setTimeout(() => {
-    //   setInterval(async () => {
-    //     await requestPrediction()
-    //   }, predictInterval)
-    // }, 500)
-
     return true
   }
 
-  /** ======== Getters ======== */
+  /**
+   * Corrects the core filter (kf1) with a high-confidence, snapped-to-path position.
+   * This should be called from the navigation view during an active navigation session.
+   * @param snappedLatLng - The user's position snapped to the navigation path.
+   */
+  function correctWithMapMatching(snappedLatLng: [number, number]) {
+    // A low noise value indicates high confidence in this measurement.
+    const highConfidenceNoise = 0.5
+    kf1.update(snappedLatLng[0], snappedLatLng[1], highConfidenceNoise)
+  }
+
+  /** ======== Getters and Actions ======== */
   function getPredictionResult() {
     return latestPrediction.value
   }
@@ -194,33 +189,16 @@ export function usePositioningSystem() {
     getRadHeading,
     isAvailable,
     resetToBeacon,
+    correctWithMapMatching, // Expose the new function
     imu,
     orien,
     isPermissionGranted,
   }
 }
 
-/** ======== Window Push ======== */
 function pushToWindowBuffer() {
   if (latestIMUData.value && latestGPSLat.value !== null && latestGPSLng.value !== null) {
     windowBuffer.push(latestIMUData.value, latestGPSLat.value, latestGPSLng.value)
   }
 }
 
-/** ======== Request Prediction ======== */
-// async function requestPrediction() {
-//   if (isSubmittingPrediction.value) return
-//   isSubmittingPrediction.value = true
-
-//   try {
-//     const payload: PredictionPayload = {
-//       interval: windowBuffer.getInterval(),
-//       data: windowBuffer.getWindowData(),
-//     }
-//     latestPrediction.value = await submitPayload(payload)
-//   } catch (err) {
-//     console.error('Prediction error:', err)
-//   } finally {
-//     isSubmittingPrediction.value = false
-//   }
-// }

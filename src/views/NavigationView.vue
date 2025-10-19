@@ -5,9 +5,11 @@
         <div id="turn-icon">{{ currentInstruction }}</div>
         <p>1 m.</p>
       </div>
-      <p id="instruction-text" v-if="nextInstruction">{{ nextInstruction }}</p>
     </div>
-    <div id="next-turn-box">Then <span id="next-turn-arrow">↑</span></div>
+    <div id="next-turn-box" v-if="nextInstruction">
+      <div>Then <span id="next-turn-arrow">↑</span></div>
+      <p id="instruction-text">{{ nextInstruction }}</p>
+    </div>
   </div>
   <div id="navigation-bottom-container">
     <p id="time-to-destination">3 min</p>
@@ -42,8 +44,10 @@ const position = usePositioningSystem()
 
 onMounted(() => {
   if (navigationStore.navigationRoute.length > 0) {
-    if(navigationStore.navigationGraph)
-    generateInstructions(navigationStore.navigationRoute, navigationStore.navigationGraph)
+    if (navigationStore.navigationGraph){
+      const currentHeading = position.getRadHeading()
+      generateInstructions(navigationStore.navigationRoute, navigationStore.navigationGraph, currentHeading)
+    }
   }
 
   setInterval(async () => {
@@ -54,6 +58,7 @@ onMounted(() => {
       mapInfo.current_floor.id,
       userPos,
     )
+    // position.correctWithMapMatching(snappedPos as [number, number]);
     const heading = position.getRadHeading()
     // console.log("heading :", heading)
     const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.beacons as Beacon[])
@@ -62,15 +67,14 @@ onMounted(() => {
 
     props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
     props.mapDisplayRef.setUserDebugPosition(userPos)
-
-    updateUserProgress(position.getPosition(), )
+    updateUserProgress(snappedPos)
   }, 1000)
 })
 
 function handleExit() {
-  navigationStore.clearNavigation();
+  navigationStore.clearNavigation()
   // Add logic here to switch the view back to the main map
-  router.push({name: 'recommend'})
+  router.push({ name: 'recommend' })
 }
 </script>
 <style>

@@ -86,6 +86,9 @@ onMounted(async () => {
   mapDisplay.setView(bounds[0] as [number, number])
 
   mapInfo.setMapInitialized(true)
+  // load all POIs as well
+  const buildingPOIs = await PoiService.getAllPOIs(build_id)
+  mapInfo.loadBuildingAllPois(buildingPOIs)
 })
 
 watch(
