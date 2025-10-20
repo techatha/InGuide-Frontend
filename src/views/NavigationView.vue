@@ -2,26 +2,52 @@
   <div id="navigation-top-container">
     <div id="instruction-box">
       <div>
-        <div id="turn-icon">{{ currentInstruction }}</div>
-        <p>1 m.</p>
+        <div id="direction-indicator">
+          <div id="direction-arrow">
+            <font-awesome-icon
+              v-if="currentDirection"
+              :icon="directionIcons[currentDirection]"
+              size="2x"
+            />
+          </div>
+          <p>{{ distanceToNextTurn }} m.</p>
+        </div>
+        <div id="instruction-text">{{ currentInstruction }}</div>
       </div>
     </div>
+
     <div id="next-turn-box" v-if="nextInstruction">
-      <div>Then <span id="next-turn-arrow">↑</span></div>
-      <p id="instruction-text">{{ nextInstruction }}</p>
+      <div>
+        Then
+        <span id="next-turn-arrow">
+          <font-awesome-icon v-if="nextDirection" :icon="directionIcons[nextDirection]" />
+        </span>
+      </div>
     </div>
   </div>
+
   <div id="navigation-bottom-container">
-    <p id="time-to-destination">3 min</p>
+    <p id="time-to-destination">{{ estimatedTime }} min</p>
     <div id="bottom-details">
-      <p>20 m.</p>
-      <p>12:03</p>
-      <button id="exit-button" @click="handleExit">Exit</button>
+      <p>{{ totalDistance }} m.</p>
+      <p>{{ arrivalTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</p>
+      <button id="exit-button" @click="showPopup = true">Exit</button>
     </div>
   </div>
+
+  <PopUpWindow name="popup" v-model:visible="showPopup" :show-close-button="false">
+    <h2 class="text-xl font-bold mb-2">Are you sure you want to stop navigation?</h2>
+    <p class="mb-4">You will return to the map view.</p>
+
+    <div class="popup-actions">
+      <button @click="handleExit" class="popup-button primary-button">Yes</button>
+      <button @click="showPopup = false" class="popup-button secondary-button">No</button>
+    </div>
+  </PopUpWindow>
 </template>
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import PopUpWindow from '@/components/PopUpWindow.vue'
+import { onMounted, ref } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTurnByTurn } from '@/composables/useTurnByTurn'
 import { findNearestBeacon } from '@/utils/findNearestBeacon'
@@ -30,23 +56,62 @@ import { useMapInfoStore } from '@/stores/mapInfo'
 import type { Beacon } from '@/types/beacon'
 import { useBeaconStore } from '@/stores/beacon'
 import router from '@/router'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import {
+  faArrowUp,
+  faArrowLeft,
+  faArrowRight,
+  faArrowTurnDown,
+  faFlagCheckered,
+  type IconDefinition,
+} from '@fortawesome/free-solid-svg-icons'
+
+const showPopup = ref(false)
 
 const mapInfo = useMapInfoStore()
 const beaconStore = useBeaconStore()
 const navigationStore = useNavigationStore()
-const { currentInstruction, nextInstruction, generateInstructions, updateUserProgress } =
-  useTurnByTurn()
+const {
+  currentInstruction,
+  nextInstruction,
+  generateInstructions,
+  updateUserProgress,
+  distanceToNextTurn,
+  currentDirection,
+  nextDirection,
+  totalDistance,
+  estimatedTime,
+  arrivalTime,
+} = useTurnByTurn()
 const props = defineProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mapDisplayRef: any
 }>()
 const position = usePositioningSystem()
 
+const directionIcons: { [key: string]: IconDefinition } = {
+  STRAIGHT: faArrowUp,
+  LEFT: faArrowLeft,
+  RIGHT: faArrowRight,
+  'U-TURN': faArrowTurnDown,
+  FINISH: faFlagCheckered,
+}
+
 onMounted(() => {
+  if (navigationStore.navigationRoute.length === 0 || !navigationStore.navigationGraph) {
+    console.warn('No navigation data found. Redirecting to recommendations.');
+    router.push({ name: 'recommend' });
+    return; // Stop the rest of the function from executing
+  }
+
   if (navigationStore.navigationRoute.length > 0) {
-    if (navigationStore.navigationGraph){
+    if (navigationStore.navigationGraph) {
       const currentHeading = position.getRadHeading()
-      generateInstructions(navigationStore.navigationRoute, navigationStore.navigationGraph, currentHeading)
+      generateInstructions(
+        navigationStore.navigationRoute,
+        navigationStore.navigationGraph,
+        currentHeading,
+      )
     }
   }
 
@@ -96,15 +161,15 @@ function handleExit() {
  * TOP INSTRUCTION BOX STYLES
  */
 #navigation-top-container {
-  /* HOIST to the TOP */
   position: absolute;
-  top: 50px; /* Small gap from the top */
+  top: 20px;
   left: 10px;
   right: 10px;
-  z-index: 10; /* Make sure it's above the map content */
-  /* Using flex for layout within this container */
+  z-index: 10;
   display: flex;
-  align-items: flex-start; /* Aligns the instruction box to the top */
+  flex-direction: column;
+  /* MODIFIED: Changed to flex-start to align items to the left */
+  align-items: flex-start;
 }
 
 #instruction-box {
@@ -114,27 +179,26 @@ function handleExit() {
   padding: 10px 15px;
   display: flex;
   flex-direction: column;
-  flex-grow: 1; /* Allows it to take up most of the space */
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 2;
+  margin-bottom: -20px;
+  /* ADDED: Black border */
+  border: 1px solid black;
+  min-height: 100px;
 }
 
 #instruction-box > div {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Pushes the distance '1 m.' to the right */
-  margin-bottom: 5px;
-}
-
-#turn-icon {
-  font-size: 24px;
-  font-weight: bold;
-  /* Simulate the arrow and text layout */
-  display: flex;
-  align-items: center;
+  justify-content: space-between;
 }
 
 #instruction-text {
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 24px; /* Adjusted for better fit */
+  /* font-weight: 500; */
   margin: 0;
   padding: 0;
 }
@@ -146,27 +210,40 @@ function handleExit() {
 }
 
 /* Next turn 'Then' box styling */
+/* Next turn 'Then' box styling */
 #next-turn-box {
-  /* Positioning next to the main instruction box */
-  margin-left: -5px; /* Overlap with the main box */
-  margin-top: 50px; /* Position it lower to overlap the map background */
-  background-color: #8ac08a; /* Light green/blue color from image */
+  position: relative;
+  z-index: 1;
+  margin-left: 15px;
+  background-color: #8ac08a;
   color: white;
-  padding: 5px 8px;
+  padding: 8px; /* Use smaller padding on the main box now */
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   font-size: 14px;
   font-weight: bold;
+  width: 100px;
+  height: 50px;
+  border: 1px solid black;
+
+  /* --- MODIFIED --- */
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* Change back to column */
+  justify-content: flex-start; /* Align content to the top... */
   align-items: center;
-  justify-content: center;
-  width: 40px; /* Fixed width to match the image's small box */
-  height: 40px;
+}
+
+/* Re-introduce this rule to style the new wrapper div */
+#next-turn-box > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* ...and add padding to push it down! */
+  padding-top: 10px; /* Adjust this value until it looks perfect! */
 }
 
 #next-turn-arrow {
-  display: block; /* Ensure the arrow is on its own line or centered */
+  /* MODIFIED: Removed 'display: block' to allow side-by-side layout */
   font-size: 18px;
 }
 
@@ -174,23 +251,25 @@ function handleExit() {
  * BOTTOM CONTROL BOX STYLES
  */
 #navigation-bottom-container {
-  /* HOIST to the BOTTOM */
   position: absolute;
-  bottom: 10px; /* Small gap from the bottom */
+  bottom: 10px;
   left: 10px;
   right: 10px;
   z-index: 10;
   background-color: white;
   border-radius: 8px;
-  box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.15); /* Shadow on top */
+  box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.15);
   padding: 15px;
-  text-align: left;
+  text-align: center;
+  /* ADDED: Black border */
+  border: 1px solid black;
 }
 
 #time-to-destination {
   font-size: 24px;
   font-weight: bold;
   margin: 0 0 10px 0;
+  justify-content: center;
 }
 
 #bottom-details {
@@ -214,5 +293,42 @@ function handleExit() {
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;
+}
+
+/* Popup Window specific styles */
+
+.popup-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.popup-button {
+  padding: 10px 25px;
+  border-radius: 8px;
+  font-weight: bold;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex-grow: 1; /* Allows the button to grow and fill available space */
+  text-align: center; /* Keeps the text centered */
+}
+
+.primary-button { /* "Yes" button */
+  background-color: #7DA085; /* Muted sage green */
+}
+
+.primary-button:hover {
+  background-color: #4f664f; /* Darker green on hover */
+}
+
+.secondary-button { /* "No" button */
+  background-color: #CF4648; /* Muted terracotta red */
+}
+
+.secondary-button:hover {
+  background-color: #844343; /* Darker red on hover */
 }
 </style>

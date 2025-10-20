@@ -14,6 +14,8 @@ import type { PredictionResponse, Probability } from '@/types/prediction'
 import type { Beacon } from '@/types/beacon'
 import { preprocess } from '@/utils/ModelPreprocess'
 
+const isInitialized = ref(false)
+
 /** ======== Sensors ======== */
 const gps = useGeolocation()
 const imu = useIMU()
@@ -42,6 +44,11 @@ export function usePositioningSystem() {
     interval: number = 500,
     windowSize: number = 4000,
   ): boolean {
+    if (isInitialized.value) {
+      console.log('Positioning system already initialized. Skipping setup.');
+      return true;
+    }
+
     gps.init()
     localModel.loadLocalModel()
     windowBuffer.setSize(windowSize, interval)
@@ -148,6 +155,7 @@ export function usePositioningSystem() {
       pushToWindowBuffer()
     }, interval)
 
+    isInitialized.value = true
     return true
   }
 

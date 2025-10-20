@@ -25,6 +25,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useAppInitializer } from '@/composables/useAppInitializer'
 import { usePositioningSystem } from '@/composables/usePositioningSystem'
 import { useMapInfoStore } from '@/stores/mapInfo'
 import { useBeaconStore } from '@/stores/beacon'
@@ -38,6 +39,8 @@ import { findNearestBeacon } from '@/utils/findNearestBeacon'
 import type { Beacon } from '@/types/beacon'
 import { useRoute, useRouter } from 'vue-router'
 import { useNavigationStore } from '@/stores/navigation'
+
+const { isAppInitialized } = useAppInitializer()
 
 const route = useRoute()
 const router = useRouter()
@@ -56,6 +59,8 @@ const props = defineProps<{
 const position = usePositioningSystem()
 
 const initPosition = async () => {
+  if (isAppInitialized.value) return;
+
   const initBeacon = localStorage.getItem('beaconID')
   const checkedBeacon = await beaconStore.findBeaconById(initBeacon ?? '')
   const latLng = checkedBeacon.latLng
@@ -86,9 +91,7 @@ const initPosition = async () => {
     props.mapDisplayRef.setUserDebugPosition(userPos)
   }, 1000)
 
-  // setInterval(() => {
-  //   console.log(position.getPredictionResult());
-  // }, 2000)
+  isAppInitialized.value = true;
 }
 
 const requestPermissions = async () => {
@@ -131,15 +134,25 @@ watch(
   () => mapInfo.isMapInitialized,
   (isInitialized) => {
     if (isInitialized) {
-      console.log('Map is ready, rendering paths and POIs!')
-      // props.mapDisplayRef.renderPaths(mapInfo.current_buildingId, mapInfo.current_floor.id)
+      // If the app has already been set up, do nothing.
+      if (isAppInitialized.value) return;
+
+      console.log('Map is ready, checking permissions for the first time!')
 
       const POIs = mapInfo.floorPOIs
       props.mapDisplayRef.renderPOIs(POIs)
 
-      setTimeout(() => {
-        showPopup.value = true
-      }, 1000)
+      isPermissionGranted.value = position.isPermissionGranted()
+
+      if (!isPermissionGranted.value) {
+        // Show popup if no permission
+        setTimeout(() => {
+          showPopup.value = true
+        }, 1000)
+      } else {
+        // Initialize if permission is already granted
+        initPosition()
+      }
     }
   },
   { immediate: true },

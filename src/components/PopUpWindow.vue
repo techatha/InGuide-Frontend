@@ -1,11 +1,16 @@
 <template>
   <div v-if="props.visible"
      class="popup-overlay">
-  <div class="popup-content">
-    <button @click="close">✕</button>
-    <slot />
+    <div class="popup-content">
+      <button
+        v-if="props.showCloseButton"
+        @click="close"
+        class="popup-close-btn">
+        ✕
+      </button>
+      <slot />
+    </div>
   </div>
-</div>
 </template>
 
 <script setup lang="ts">
@@ -13,6 +18,7 @@ import { defineProps, defineEmits } from 'vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
+  showCloseButton: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['update:visible'])
@@ -24,7 +30,7 @@ function close() {
 <style>
 .popup-overlay {
   position: fixed;
-  inset: 0; /* top:0; right:0; bottom:0; left:0 */
+  inset: 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -41,4 +47,25 @@ function close() {
   width: 20rem;
 }
 
+/* ADDED: New minimal style for the close button */
+.popup-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+
+  background: none;
+  border: none;
+  padding: 0;
+
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #aaa;
+
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.popup-close-btn:hover {
+  color: #333;
+}
 </style>
