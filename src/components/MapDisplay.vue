@@ -185,6 +185,10 @@ function findPath(start: [number, number], targetPoiId: string): findPathResult 
   }
 }
 
+function snapToRoute(subgraph: NavigationGraph, position: [number, number]): [number, number] {
+  return path.snapToRoute(subgraph, position)
+}
+
 defineExpose({
   snapToPath,
   setUserPosition,
@@ -195,5 +199,6 @@ defineExpose({
   findPath,
   updateRouteProgressView,
   clearRenderedPath,
+  snapToRoute,
 })
 </script>

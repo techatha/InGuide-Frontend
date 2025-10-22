@@ -67,7 +67,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useTurnByTurn } from '@/composables/useTurnByTurn'
 import { findNearestBeacon } from '@/utils/findNearestBeacon'
 import { usePositioningSystem } from '@/composables/usePositioningSystem'
-import { useMapInfoStore } from '@/stores/mapInfo'
+// import { useMapInfoStore } from '@/stores/mapInfo'
 import type { Beacon } from '@/types/beacon'
 import { useBeaconStore } from '@/stores/beacon'
 import router from '@/router'
@@ -83,7 +83,7 @@ import {
 
 const showPopup = ref(false)
 
-const mapInfo = useMapInfoStore()
+// const mapInfo = useMapInfoStore()
 const beaconStore = useBeaconStore()
 const navigationStore = useNavigationStore()
 const {
@@ -137,11 +137,6 @@ onMounted(() => {
   intervalId.value = setInterval(async () => {
     // console.log("UI Updated")
     const userPos = position.getPosition()
-    const snappedPos = await props.mapDisplayRef.snapToPath(
-      mapInfo.current_buildingId,
-      mapInfo.current_floor.id,
-      userPos,
-    )
     // position.correctWithMapMatching(snappedPos as [number, number]);
     const heading = position.getRadHeading()
     // console.log("heading :", heading)
@@ -149,11 +144,19 @@ onMounted(() => {
     if (nearestBeacon && nearestBeacon?.distance < 0.01)
       position.resetToBeacon(nearestBeacon?.beacon as Beacon)
 
-    props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
-    // props.mapDisplayRef.setUserDebugPosition(userPos)
-    updateUserProgress(snappedPos)
+    const snappedPos = props.mapDisplayRef.snapToRoute(
+      navigationStore.routeSubgraph,
+      userPos
+    )
 
+    // 5. Tell MapView to draw the user dot at the snapped position
+    props.mapDisplayRef.setUserPosition(snappedPos, heading)
+
+    // 6. Tell MapView to update the route line (traversed/upcoming)
     props.mapDisplayRef.updateRouteProgressView(snappedPos)
+
+    // 7. Tell turn-by-turn logic to update instructions
+    updateUserProgress(snappedPos)
   }, 1000)
 })
 
