@@ -1,5 +1,5 @@
 <template>
-  <div id="navigation-top-container">
+  <div id="navigation-top-container" v-if="currentDirection != 'FINISH'">
     <div id="instruction-box">
       <div>
         <div id="direction-indicator">
@@ -27,7 +27,22 @@
   </div>
 
   <div id="navigation-bottom-container">
-    <p id="time-to-destination">{{ estimatedTime }} min</p>
+    <div v-if="currentDirection != 'FINISH'">
+      <p id="time-to-destination">{{ estimatedTime }} min</p>
+    </div>
+    <div v-else>
+      <div id="direction-indicator">
+        <div id="direction-arrow">
+          <font-awesome-icon
+            v-if="currentDirection"
+            :icon="directionIcons[currentDirection]"
+            size="2x"
+          />
+        </div>
+        <p>{{ distanceToNextTurn }} m.</p>
+      </div>
+      <div id="instruction-text">{{ currentInstruction }}</div>
+    </div>
     <div id="bottom-details">
       <p>{{ totalDistance }} m.</p>
       <p>{{ arrivalTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</p>
@@ -47,7 +62,7 @@
 </template>
 <script setup lang="ts">
 import PopUpWindow from '@/components/PopUpWindow.vue'
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTurnByTurn } from '@/composables/useTurnByTurn'
 import { findNearestBeacon } from '@/utils/findNearestBeacon'
@@ -82,12 +97,16 @@ const {
   totalDistance,
   estimatedTime,
   arrivalTime,
+  isAtDestination,
 } = useTurnByTurn()
 const props = defineProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mapDisplayRef: any
 }>()
 const position = usePositioningSystem()
+
+const intervalId = ref<number | null>(null) // <-- ADD THIS for the main loop
+const arrivalTimerId = ref<number | null>(null)
 
 const directionIcons: { [key: string]: IconDefinition } = {
   STRAIGHT: faArrowUp,
@@ -99,9 +118,9 @@ const directionIcons: { [key: string]: IconDefinition } = {
 
 onMounted(() => {
   if (navigationStore.navigationRoute.length === 0 || !navigationStore.navigationGraph) {
-    console.warn('No navigation data found. Redirecting to recommendations.');
-    router.push({ name: 'recommend' });
-    return; // Stop the rest of the function from executing
+    console.warn('No navigation data found. Redirecting to recommendations.')
+    router.push({ name: 'recommend' })
+    return // Stop the rest of the function from executing
   }
 
   if (navigationStore.navigationRoute.length > 0) {
@@ -115,7 +134,7 @@ onMounted(() => {
     }
   }
 
-  setInterval(async () => {
+  intervalId.value = setInterval(async () => {
     // console.log("UI Updated")
     const userPos = position.getPosition()
     const snappedPos = await props.mapDisplayRef.snapToPath(
@@ -131,12 +150,36 @@ onMounted(() => {
       position.resetToBeacon(nearestBeacon?.beacon as Beacon)
 
     props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
-    props.mapDisplayRef.setUserDebugPosition(userPos)
+    // props.mapDisplayRef.setUserDebugPosition(userPos)
     updateUserProgress(snappedPos)
+
+    props.mapDisplayRef.updateRouteProgressView(snappedPos)
   }, 1000)
 })
 
+watch(isAtDestination, (hasArrived) => {
+  // The watch will trigger when isAtDestination becomes true
+  if (hasArrived) {
+    console.log('Destination reached (within 5m). Starting redirect timer.')
+    const finishTimeout = 15000
+
+    arrivalTimerId.value = setTimeout(() => {
+      console.log('Timer finished. Redirecting...')
+      handleExit()
+    }, finishTimeout)
+  }
+})
+
+onUnmounted(() => {
+  console.log('Navigation view unmounted. Clearing all timers.')
+  if (intervalId.value) clearInterval(intervalId.value)
+  if (arrivalTimerId.value) clearTimeout(arrivalTimerId.value)
+})
+
 function handleExit() {
+  if (intervalId.value) clearInterval(intervalId.value)
+  if (arrivalTimerId.value) clearTimeout(arrivalTimerId.value)
+  props.mapDisplayRef.clearRenderedPath()
   navigationStore.clearNavigation()
   // Add logic here to switch the view back to the main map
   router.push({ name: 'recommend' })
@@ -316,16 +359,18 @@ function handleExit() {
   text-align: center; /* Keeps the text centered */
 }
 
-.primary-button { /* "Yes" button */
-  background-color: #7DA085; /* Muted sage green */
+.primary-button {
+  /* "Yes" button */
+  background-color: #7da085; /* Muted sage green */
 }
 
 .primary-button:hover {
   background-color: #4f664f; /* Darker green on hover */
 }
 
-.secondary-button { /* "No" button */
-  background-color: #CF4648; /* Muted terracotta red */
+.secondary-button {
+  /* "No" button */
+  background-color: #cf4648; /* Muted terracotta red */
 }
 
 .secondary-button:hover {

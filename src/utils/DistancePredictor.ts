@@ -1,5 +1,5 @@
 export function DistancePredictor() {
-  const maxVelocity = 5.0
+  const maxVelocity = 1.4
   const dampingFactor = 0.98
 
   function forward(e: number, n: number, v: number, yaw: number, acc: number, dt: number) {

@@ -88,7 +88,7 @@ const initPosition = async () => {
       position.resetToBeacon(nearestBeacon?.beacon as Beacon)
 
     props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
-    props.mapDisplayRef.setUserDebugPosition(userPos)
+    // props.mapDisplayRef.setUserDebugPosition(userPos)
   }, 1000)
 
   isAppInitialized.value = true;

@@ -132,8 +132,33 @@ function renderPaths(graph: NavigationGraph) {
   path.renderPaths(graph)
 }
 function renderRoute(pathIds: string[], graph: NavigationGraph) {
+  console.log("route rendering start!", {"pathIds": pathIds, 'graph': graph})
   path.renderRoute(pathIds, graph)
 }
+function clearRenderedPath() {
+  path.clearWalkablePaths()
+}
+function updateRouteProgressView(userPosition: [number, number]) {
+  // 1. Get the currently displayed route from the Leaflet layer
+  const layers = pathLayer.getLayers();
+  if (layers.length === 0) {
+    console.warn("updateRouteProgressView called, but no route is on the map.");
+    return;
+  }
+
+  const routePolyline = layers[0] as L.Polyline;
+  const fullRouteLatLngs = routePolyline.getLatLngs() as L.LatLng[];
+
+  // Convert Leaflet's LatLng objects back to simple [lat, lng] arrays
+  const fullRouteCoords: [number, number][] = fullRouteLatLngs.map(latlng => [latlng.lat, latlng.lng]);
+
+  // 2. Ask the `path` composable to do the complex splitting logic
+  const { traversed, upcoming } = path.splitRouteAtPoint(fullRouteCoords, userPosition);
+
+  // 3. Tell the `path` composable to render the new split view
+  path.renderRouteProgress(traversed, upcoming);
+}
+
 function renderPOIs(pois: POI[]) {
   poi.renderPOIs(pois)
 }
@@ -168,5 +193,7 @@ defineExpose({
   renderRoute,
   renderPOIs,
   findPath,
+  updateRouteProgressView,
+  clearRenderedPath,
 })
 </script>

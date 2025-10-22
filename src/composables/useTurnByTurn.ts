@@ -4,7 +4,6 @@ import type { NavigationGraph } from '@/types/path'
 import { useNavigationStore } from '@/stores/navigation'
 import { useMapInfoStore } from '@/stores/mapInfo'
 
-
 const WALKING_SPEED_MPS = 1.4
 /**
  * A Vue Composable for handling turn-by-turn navigation logic.
@@ -18,6 +17,8 @@ export function useTurnByTurn() {
   const essentialNodeIds = ref<string[]>([])
   const currentStepIndex = ref(0)
   const distanceToNextTurn = ref(0)
+
+  const isAtDestination = ref(false)
 
   const totalDistance = ref(0) // Remaining distance in meters
   const estimatedTime = ref(0) // Remaining time in minutes
@@ -40,6 +41,7 @@ export function useTurnByTurn() {
     directions.value = []
     essentialNodeIds.value = []
     currentStepIndex.value = 0
+    isAtDestination.value = false
 
     // Step 1: Calculate the raw bearings and turns for the entire path.
     const nodes = graph.nodes
@@ -85,80 +87,72 @@ export function useTurnByTurn() {
       }
     }
 
-    // Step 3: Consolidate the raw turns into a final, user-friendly list.
-    const finalInstructions: string[] = [startingInstruction]
-    const finalDirections: string[] = [initialTurn]
-
+    // Step 3: Consolidate the raw turns into a final, user-friendly list using the Accumulator Method.
+    const finalInstructions: string[] = [startingInstruction];
+    const finalDirections: string[] = [initialTurn];
     if (pathIds.length > 0) {
-      essentialNodeIds.value.push(pathIds[0]) // The first instruction corresponds to the start node
+      essentialNodeIds.value.push(pathIds[0]);
     }
 
-    let i = 0
-    while (i < turns.length) {
-      const currentTurn = turns[i]
+    let currentStraightDistance = 0;
 
-      if (currentTurn === 'STRAIGHT') {
-        let segmentEndIndex = i
-        while (segmentEndIndex < turns.length && turns[segmentEndIndex] === 'STRAIGHT') {
-          segmentEndIndex++
+    // Loop through each segment of the path
+    for (let i = 0; i < turns.length; i++) {
+      const segmentIds = [pathIds[i], pathIds[i + 1]];
+      currentStraightDistance += calculatePathDistance(segmentIds, graph);
+
+      const turn = turns[i];
+
+      // If we hit a real turn, announce the straight distance we've traveled and the turn itself.
+      if (turn !== 'STRAIGHT') {
+        if (currentStraightDistance > 0) {
+          finalInstructions.push(`Go straight for ${Math.round(currentStraightDistance)} meters.`);
+          finalDirections.push('STRAIGHT');
+          // This instruction's "target" is the node where you start the turn.
+          essentialNodeIds.value.push(pathIds[i + 1]);
         }
 
-        let totalDistance = 0
-        for (let j = i; j < segmentEndIndex; j++) {
-          const fromNode = nodes.get(pathIds[j + 1])
-          const toNode = nodes.get(pathIds[j + 2])
-          if (fromNode && toNode) {
-            const fromPoint = turf.point(switchLatLng(fromNode.coordinates))
-            const toPoint = turf.point(switchLatLng(toNode.coordinates))
-            totalDistance += turf.distance(fromPoint, toPoint, { units: 'meters' })
-          }
-        }
+        // Reset the distance accumulator
+        currentStraightDistance = 0;
 
-        if (totalDistance > 0) {
-          finalInstructions.push(`Go straight for ${Math.round(totalDistance)} meters.`)
-          finalDirections.push('STRAIGHT')
-          // This instruction's target is the node at the end of the straight segment
-          essentialNodeIds.value.push(pathIds[segmentEndIndex + 1])
-        }
-
-        i = segmentEndIndex
-      } else {
-        const turnNodeId = pathIds[i + 1]
-        const poi = mapInfo.findPOIbyId(turnNodeId)?.poi
-        let instruction = ''
-
-        if (currentTurn === 'U-TURN') {
-          instruction = 'Make a U-turn'
-        } else {
-          instruction = `Turn ${currentTurn.toLowerCase()}`
-        }
-
+        // Now, add the turn instruction
+        const turnNodeId = pathIds[i + 1];
+        const poi = mapInfo.findPOIbyId(turnNodeId)?.poi;
+        let instruction = (turn === 'U-TURN') ? 'Make a U-turn' : `Turn ${turn.toLowerCase()}`;
         if (poi?.name) {
-          instruction += ` at ${poi.name}`
+          instruction += ` at ${poi.name}`;
         }
-        instruction += '.'
-        finalInstructions.push(instruction)
-        finalDirections.push(currentTurn)
-        essentialNodeIds.value.push(turnNodeId) // This instruction corresponds to the turn node
-        i++
+        instruction += '.';
+
+        finalInstructions.push(instruction);
+        finalDirections.push(turn);
+        essentialNodeIds.value.push(turnNodeId);
       }
     }
 
-    finalInstructions.push('You have arrived at your destination.')
-    finalDirections.push('FINISH')
-    if (pathIds.length > 0) {
-      essentialNodeIds.value.push(pathIds[pathIds.length - 1]) // The last instruction is the destination node
+    // After the loop, if there's any remaining straight distance, announce it.
+    if (currentStraightDistance > 0) {
+        finalInstructions.push(`Go straight for ${Math.round(currentStraightDistance)} meters.`);
+        finalDirections.push('STRAIGHT');
     }
 
-    const startNode = graph.nodes.get(pathIds[0])?.coordinates
+    finalInstructions.push('You have arrived at your destination.');
+    finalDirections.push('FINISH');
+    if (pathIds.length > 0) {
+      essentialNodeIds.value.push(pathIds[pathIds.length - 1]);
+    }
+
+    const startNode = graph.nodes.get(pathIds[0])?.coordinates;
     if (startNode) {
-      updateRouteMetrics(startNode)
+      updateRouteMetrics(startNode);
     }
 
     directions.value = finalDirections;
-    instructions.value = finalInstructions
-    return finalInstructions
-  }
+    instructions.value = finalInstructions;
+
+    console.log(finalInstructions);
+    return finalInstructions;
+}
 
   /**
    * Updates the user's progress along the route, advancing the current instruction step.
@@ -168,12 +162,33 @@ export function useTurnByTurn() {
     const graph = navigationStore.navigationGraph
     const fullPathIds = navigationStore.navigationRoute
 
+    if (!graph || fullPathIds.length === 0) {
+      distanceToNextTurn.value = 0
+      return
+    }
+
+    const destinationNodeId = fullPathIds[fullPathIds.length - 1]
+    const destinationNode = graph.nodes.get(destinationNodeId)
+
+    if (destinationNode) {
+      const userPoint = turf.point(switchLatLng(userPos))
+      const destinationPoint = turf.point(switchLatLng(destinationNode.coordinates))
+      const distanceToDestination = turf.distance(userPoint, destinationPoint, { units: 'meters' })
+
+      const arrivalThreshold = 5 // 5 meters
+      if (distanceToDestination < arrivalThreshold) {
+        isAtDestination.value = true
+      }
+    }
+
+    // console.log("is at destination", isAtDestination.value)
+
     if (
-      !graph ||
       essentialNodeIds.value.length < 2 ||
       currentStepIndex.value >= instructions.value.length - 1
     ) {
       distanceToNextTurn.value = 0
+      updateRouteMetrics(userPos)
       return
     }
 
@@ -229,7 +244,6 @@ export function useTurnByTurn() {
     }
   }
 
-  // ADDED: A new helper function to calculate distance and time
   /**
    * Calculates the total distance, estimated time, and arrival time for the remaining route.
    * @param userPosition - The user's current coordinates.
@@ -266,7 +280,6 @@ export function useTurnByTurn() {
     // 2. Calculate remaining distance
     let remainingDistance = 0
 
-    // Distance from user's snapped position to the end of the current segment
     const endOfCurrentSegment = nodes.get(fullPathIds[closestSegmentIndex + 1])?.coordinates
     if (endOfCurrentSegment) {
       remainingDistance += turf.distance(
@@ -276,15 +289,9 @@ export function useTurnByTurn() {
       )
     }
 
-    // Add distances of all subsequent segments
-    for (let i = closestSegmentIndex + 1; i < fullPathIds.length - 1; i++) {
-      const from = nodes.get(fullPathIds[i])?.coordinates
-      const to = nodes.get(fullPathIds[i + 1])?.coordinates
-      if (from && to) {
-        remainingDistance += turf.distance(switchLatLng(from), switchLatLng(to), {
-          units: 'meters',
-        })
-      }
+    const remainingPathIds = fullPathIds.slice(closestSegmentIndex + 2)
+    if (remainingPathIds.length > 0) {
+      remainingDistance += calculatePathDistance(remainingPathIds, graph)
     }
 
     // 3. Update reactive state
@@ -309,10 +316,34 @@ export function useTurnByTurn() {
     totalDistance,
     estimatedTime,
     arrivalTime,
+    isAtDestination,
   }
 }
 
 // --- Helper Functions ---
+
+/**
+ * Calculates the total distance in meters for a given path of node IDs.
+ * @param pathIds - An array of node IDs.
+ * @param graph - The navigation graph.
+ * @returns The total distance in meters.
+ */
+function calculatePathDistance(pathIds: string[], graph: NavigationGraph): number {
+  let totalDistance = 0
+  const nodes = graph.nodes
+
+  for (let i = 0; i < pathIds.length - 1; i++) {
+    const fromNode = nodes.get(pathIds[i])
+    const toNode = nodes.get(pathIds[i + 1])
+
+    if (fromNode && toNode) {
+      const fromPoint = turf.point(switchLatLng(fromNode.coordinates))
+      const toPoint = turf.point(switchLatLng(toNode.coordinates))
+      totalDistance += turf.distance(fromPoint, toPoint, { units: 'meters' })
+    }
+  }
+  return totalDistance
+}
 
 function calculateBearing(from: [number, number], to: [number, number]) {
   const dx = to[0] - from[0]

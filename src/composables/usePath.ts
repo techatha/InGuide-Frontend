@@ -47,6 +47,60 @@ export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
     }
   }
 
+  function splitRouteAtPoint(fullRouteCoords: [number, number][], userPosition: Position): { traversed: [number, number][], upcoming: [number, number][] } {
+    const userPoint = turf.point(switchLatLng(userPosition));
+    let closestSegmentIndex = -1;
+    let minDistance = Infinity;
+    let snappedPointOnLine: [number, number] | undefined = undefined;
+
+    // 1. Find the closest segment and the user's snapped point on the line
+    for (let i = 0; i < fullRouteCoords.length - 1; i++) {
+      const from = fullRouteCoords[i];
+      const to = fullRouteCoords[i + 1];
+      const line = turf.lineString([switchLatLng(from), switchLatLng(to)]);
+      const snapped = turf.nearestPointOnLine(line, userPoint);
+      const dist = snapped.properties.dist ?? Infinity;
+
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestSegmentIndex = i;
+        snappedPointOnLine = switchLatLng(snapped.geometry.coordinates);
+      }
+    }
+
+    if (closestSegmentIndex === -1 || !snappedPointOnLine) {
+      return { traversed: [], upcoming: fullRouteCoords }; // Failsafe
+    }
+
+    // 2. Build the traversed and upcoming paths
+    const traversed = fullRouteCoords.slice(0, closestSegmentIndex + 1);
+    traversed.push(snappedPointOnLine); // End the traversed path at the user's exact spot
+
+    const upcoming = [snappedPointOnLine]; // Start the upcoming path from the user's exact spot
+    upcoming.push(...fullRouteCoords.slice(closestSegmentIndex + 1));
+
+    return { traversed: traversed, upcoming: upcoming };
+  }
+
+  function renderRouteProgress(traversedCoords: [number, number][], upcomingCoords: [number, number][]) {
+    clearWalkablePaths()
+
+    // This is the logic to make the path disappear behind the user.
+    // To make it turn gray instead, just uncomment the block below.
+    /*
+    if (traversedCoords.length > 1) {
+      const traversedLine = L.polyline(traversedCoords, traversedPath);
+      traversedLine.addTo(pathLayer);
+    }
+    */
+
+    // Draw the orange, upcoming portion of the path
+    if (upcomingCoords.length > 1) {
+      const upcomingLine = L.polyline(upcomingCoords, availablePath)
+      upcomingLine.addTo(pathLayer)
+    }
+  }
+
   async function snapToPath(
     buildingId: string,
     floorId: string,
@@ -93,6 +147,8 @@ export function usePath(map: Ref<Map>, pathLayer: L.LayerGroup) {
     snapToPath,
     renderRoute,
     clearWalkablePaths,
+    splitRouteAtPoint,
+    renderRouteProgress,
   }
 }
 
@@ -133,3 +189,9 @@ const availablePath = {
   weight: 5,
   smoothFactor: 1,
 }
+
+// const traversedPath = {
+//   color: 'gray',
+//   weight: 5,
+//   smoothFactor: 1,
+// }

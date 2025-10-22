@@ -12,7 +12,7 @@ export type Mode = 'forward' | 'turn' | 'halt'
 export function KalmanFilteredPosition() {
   const kf = ref<ExtendedKalmanFilter | null>(null)
   const Q = ref<math.Matrix | null>(null)
-  const maxAccel = 5.0
+  const maxAccel = 1.4
   let coordsTransform = coordinatesTransform()
   const distancePredictor = DistancePredictor()
 
