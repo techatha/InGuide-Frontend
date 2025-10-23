@@ -1,4 +1,3 @@
-<!-- eslint-disable @typescript-eslint/no-unused-vars -->
 <template>
   <SearchBar />
   <MenuPanel>
@@ -7,7 +6,6 @@
     </div>
     <div v-show="!uiStore.isSearchFocused">
       <RouterView @navigate-to="generateRoute" v-slot="{ Component }">
-        <!-- Keep list cached make instantly visible when click Back -->
         <keep-alive include="RecommendedView">
           <component :is="Component" />
         </keep-alive>
@@ -24,7 +22,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+// CHANGED: Added onUnmounted
+import { ref, watch, onUnmounted } from 'vue'
 import { useAppInitializer } from '@/composables/useAppInitializer'
 import { usePositioningSystem } from '@/composables/usePositioningSystem'
 import { useMapInfoStore } from '@/stores/mapInfo'
@@ -52,34 +51,47 @@ const uiStore = useUIMenuPanelStore()
 const beaconStore = useBeaconStore()
 const navigationStore = useNavigationStore()
 
+// CHANGED: Added ref to store the interval ID
+const positionIntervalId = ref<number | null>(null)
+
 const props = defineProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mapDisplayRef: any
 }>()
 const position = usePositioningSystem()
 
-const initPosition = async () => {
-  if (isAppInitialized.value) return;
+// CHANGED: Renamed function to 'startMapInterval'
+const startMapInterval = async () => {
+  // CHANGED: Don't start if already running
+  if (isAppInitialized.value && positionIntervalId.value) return
 
-  const initBeacon = localStorage.getItem('beaconID')
-  const checkedBeacon = await beaconStore.findBeaconById(initBeacon ?? '')
-  const latLng = checkedBeacon.latLng
-  console.log(initBeacon)
-  console.log(latLng)
-  const snappedLatLng = await props.mapDisplayRef.snapToPath(
-    mapInfo.current_buildingId,
-    mapInfo.current_floor.id,
-    latLng,
-  )
-  position.init(snappedLatLng)
+  // This is all your original init logic, runs only once
+  if (!isAppInitialized.value) {
+    const initBeacon = localStorage.getItem('beaconID')
+    const checkedBeacon = await beaconStore.findBeaconById(initBeacon ?? '')
+    const latLng = checkedBeacon.latLng
+    console.log(initBeacon)
+    console.log(latLng)
+    const snappedLatLng = await props.mapDisplayRef.snapToPath(
+      mapInfo.current_buildingId,
+      mapInfo.current_floor.id,
+      latLng
+    )
+    position.init(snappedLatLng)
+    isAppInitialized.value = true
+  }
 
-  setInterval(async () => {
+  // CHANGED: Clear any old interval and start the new one
+  if (positionIntervalId.value) clearInterval(positionIntervalId.value)
+
+  console.log('Starting Page 1 (snapToPath) interval')
+  positionIntervalId.value = setInterval(async () => {
     // console.log("UI Updated")
     const userPos = position.getPosition()
     const snappedPos = await props.mapDisplayRef.snapToPath(
       mapInfo.current_buildingId,
       mapInfo.current_floor.id,
-      userPos,
+      userPos
     )
     const heading = position.getRadHeading()
     // console.log("heading :", heading)
@@ -90,8 +102,15 @@ const initPosition = async () => {
     props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
     // props.mapDisplayRef.setUserDebugPosition(userPos)
   }, 1000)
+}
 
-  isAppInitialized.value = true;
+// CHANGED: Added new function to stop the interval
+const stopMapInterval = () => {
+  if (positionIntervalId.value) {
+    clearInterval(positionIntervalId.value)
+    positionIntervalId.value = null
+    console.log('Stopped Page 1 (snapToPath) interval')
+  }
 }
 
 const requestPermissions = async () => {
@@ -103,17 +122,21 @@ const requestPermissions = async () => {
 
   if (isPermissionGranted.value) {
     showPopup.value = false // close only when granted
-    initPosition()
+    // CHANGED: Use new function name
+    startMapInterval()
   }
 }
 
 const generateRoute = async (poiId: string) => {
+  // CHANGED: CRITICAL - Stop the map interval before navigating
+  stopMapInterval()
+
   // console.log(`generate a route to ${poiId}`)
   const userPos = position.getPosition()
   const snappedPos = await props.mapDisplayRef.snapToPath(
     mapInfo.current_buildingId,
     mapInfo.current_floor.id,
-    userPos,
+    userPos
   )
   // console.log("finding path")
   // run aStar (temp_start → poiId)
@@ -135,7 +158,8 @@ watch(
   (isInitialized) => {
     if (isInitialized) {
       // If the app has already been set up, do nothing.
-      if (isAppInitialized.value) return;
+      // CHANGED: Modified this check slightly
+      if (isAppInitialized.value) return
 
       console.log('Map is ready, checking permissions for the first time!')
 
@@ -151,19 +175,37 @@ watch(
         }, 1000)
       } else {
         // Initialize if permission is already granted
-        initPosition()
+        // CHANGED: Use new function name
+        startMapInterval()
       }
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 watch(
   () => uiStore.isSearchFocused,
   () => {
     uiStore.fullExpand()
-  },
+  }
 )
+
+// CHANGED: Add new watcher to restart the map interval when navigation ends
+watch(
+  () => navigationStore.navigationRoute.length,
+  (newLength, oldLength) => {
+    // Check if navigation just ended (route length went from >0 to 0)
+    if (oldLength > 0 && newLength === 0 && isAppInitialized.value) {
+      console.log('Navigation ended, restarting Page 1 (snapToPath) interval')
+      startMapInterval()
+    }
+  }
+)
+
+// CHANGED: Add unmount hook to clean up the interval if the main view is ever destroyed
+onUnmounted(() => {
+  stopMapInterval()
+})
 </script>
 
 <style src="@/style/MapView.css"></style>
