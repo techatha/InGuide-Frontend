@@ -11,16 +11,16 @@ import { useRoute } from "vue-router"
 import { useMapInfoStore } from "@/stores/mapInfo"
 import PoiService from "@/services/PoiService"
 import { useUIMenuPanelStore } from "@/stores/uiMenuPanel"
-import { useNavigationStore } from "@/stores/navigation"
 import type { POI } from "@/types/poi"
 import router from "@/router"
 
 const route = useRoute()
 const mapInfo = useMapInfoStore()
 const uiStore = useUIMenuPanelStore()
-const naviationStore = useNavigationStore()
 
 const poi = ref<POI | null>(null)
+
+const emit = defineEmits<{ (e: 'stop-map-interval'): void }>()
 
 onMounted(async () => {
   uiStore.startNavigate()
@@ -33,8 +33,7 @@ const startNavigate = () => {
       console.error("There is no destination selected")
     }
     console.log(poi.value?.id)
-    naviationStore.setDestination(poi.value?.id ?? '')
-
+    emit("stop-map-interval")
     // router push
     router.push({name: "navigate", params: { id: route.params.id } })
   } catch (error) {

@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, type Ref } from 'vue'
+import { ref, onMounted, watch, type Ref, computed } from 'vue'
 import 'leaflet/dist/leaflet.css'
 import buildingService from '@/services/buildingService'
 import PoiService from '@/services/PoiService'
@@ -33,9 +33,8 @@ import { usePOI } from '@/composables/usePOI'
 import L from 'leaflet'
 import { usePath } from '@/composables/usePath'
 import type { NavigationGraph } from '@/types/path'
-import { findPathAStar } from '@/utils/AStarPathFinding'
-import { cloneGraph, addTemporaryNode } from '@/utils/AddTempNode'
-import { convertToGraph } from '@/utils/covertToGraph'
+import { useNavigationStore } from '@/stores/navigation'
+import NavGraphService from '@/services/NavGraphService'
 
 const map = ref<L.Map | null>(null)
 const poiLayer = L.layerGroup()
@@ -47,6 +46,8 @@ const poi = usePOI(map as Ref, poiLayer)
 
 const mapInfo = useMapInfoStore()
 const beaconStore = useBeaconStore()
+const navigationStore = useNavigationStore()
+
 // this is setup for test
 // CAMT Building location
 const bounds = [
@@ -58,38 +59,59 @@ const mapContainer = ref<HTMLElement | null>(null)
 
 const changeFloorPlan = async (floor: Floor) => {
   const build_id = mapInfo.current_buildingId
+  mapInfo.current_floor = floor
+  path.clearWalkablePaths()
+  poi.removePOIs()
   const newPOIs = await PoiService.getPOIs(build_id, floor.id)
   mapInfo.loadPOIs(newPOIs)
   const newBeacons = await beaconService.getBeacons(build_id, floor.id)
   beaconStore.loadBeacons(newBeacons)
   // path.renderFloorPaths(build_id, floor.id)
-  mapInfo.current_floor = floor
-  path.clearWalkablePaths()
-
   // reload new POIs
   const allPOIs = await PoiService.getAllPOIs(build_id)
   mapInfo.loadBuildingAllPois(allPOIs)
 }
 
 onMounted(async () => {
-  const build_id = mapInfo.current_buildingId
-  const floors: Floor[] = await buildingService.getFloors(build_id)
-  mapInfo.loadFloors(floors)
-  mapInfo.current_floor = floors[0]
-  const POIs: POI[] = await PoiService.getPOIs(build_id, floors[0].id)
-  mapInfo.loadPOIs(POIs)
-  const newBeacons = await beaconService.getBeacons(build_id, floors[0].id)
-  beaconStore.loadBeacons(newBeacons)
-  await mapDisplay.init(mapContainer.value as HTMLElement, poiLayer, pathLayer)
-  await mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url)
-  mapDisplay.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
-  mapDisplay.setView(bounds[0] as [number, number])
+  // Wrap all async setup logic in one try...catch
+  try {
+    const build_id = mapInfo.current_buildingId;
+    const floors: Floor[] = await buildingService.getFloors(build_id);
+    mapInfo.loadFloors(floors);
+    mapInfo.current_floor = floors[0];
 
-  mapInfo.setMapInitialized(true)
-  // load all POIs as well
-  const buildingPOIs = await PoiService.getAllPOIs(build_id)
-  mapInfo.loadBuildingAllPois(buildingPOIs)
-})
+    const POIs: POI[] = await PoiService.getPOIs(build_id, floors[0].id);
+    mapInfo.loadPOIs(POIs);
+
+    const newBeacons = await beaconService.getBeacons(build_id, floors[0].id);
+    beaconStore.loadBeacons(newBeacons);
+
+    // Initialize the map display
+    await mapDisplay.init(mapContainer.value as HTMLElement, poiLayer, pathLayer);
+    await mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url);
+    mapDisplay.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number]);
+    mapDisplay.setView(bounds[0] as [number, number]);
+
+    // --- Load Super Graph ---
+    const superGraph = await NavGraphService.getSuperGraph(build_id);
+    console.log("Map Display", superGraph)
+    navigationStore.setNavigationGraph(superGraph);
+    console.log('Super graph loaded and stored.');
+    // --- End Super Graph ---
+
+    // Load all POIs as well
+    const buildingPOIs = await PoiService.getAllPOIs(build_id);
+    mapInfo.loadBuildingAllPois(buildingPOIs);
+
+    // Set initialized to true ONLY after everything has succeeded
+    mapInfo.setMapInitialized(true);
+
+  } catch (error) {
+    // This one block will catch *any* error from the services above
+    console.error('Failed to initialize map or load essential data:', error);
+    // Here you could set a global error state to show a "Failed to load map" message
+  }
+});
 
 watch(
   () => mapInfo.floorPOIs,
@@ -104,6 +126,33 @@ watch(
   () => {
     mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url)
   },
+)
+
+const currentFloorRouteSegment = computed(() => {
+  const fullRoute = navigationStore.navigationRoute
+  // Get the graph directly from the Floor object (already converted)
+  const currentFloorGraph = mapInfo.current_floor?.graph
+
+  if (!navigationStore.isNavigating || !currentFloorGraph?.nodes) {
+    return []
+  }
+  // Filter using the Map-based graph
+  return fullRoute.filter(nodeId => currentFloorGraph.nodes.has(nodeId))
+})
+
+// --- 6. ADD watch to render the filtered route ---
+watch(
+  // Watch both the segment AND the graph it depends on
+  [() => currentFloorRouteSegment.value, () => navigationStore.currentRouteGraph],
+  ([pathSegment, routeGraph]) => {
+    clearRenderedPath() // Clear old path
+
+    // Only render if we have a segment AND the full route graph
+    if (pathSegment && pathSegment.length > 0 && routeGraph) {
+      renderRoute(pathSegment, routeGraph)
+    }
+  },
+  { immediate: true } // Run once on load
 )
 
 // Define Expose Functions
@@ -163,28 +212,6 @@ function renderPOIs(pois: POI[]) {
   poi.renderPOIs(pois)
 }
 
-type findPathResult = {
-  pathIds: string[] | null,
-  clonedGraph: NavigationGraph
-}
-
-function findPath(start: [number, number], targetPoiId: string): findPathResult {
-  const JSONgraph: NavigationGraph = mapInfo.current_floor.graph as NavigationGraph
-  if (!JSONgraph) throw new Error('Navigation graph not loaded')
-
-  const graph = convertToGraph(JSONgraph.nodes, JSONgraph.adjacencyList)
-  const clonedGraph = cloneGraph(graph)
-  const userNodeId = addTemporaryNode(clonedGraph, start)
-
-  // Run your existing A* (should accept NavigationGraph & node IDs)
-  const pathIds = findPathAStar(clonedGraph, userNodeId, targetPoiId)
-  // console.log(pathIds)
-  return {
-    pathIds: pathIds,
-    clonedGraph: clonedGraph,
-  }
-}
-
 function snapToRoute(subgraph: NavigationGraph, position: [number, number]): [number, number] {
   return path.snapToRoute(subgraph, position)
 }
@@ -196,7 +223,6 @@ defineExpose({
   renderPaths,
   renderRoute,
   renderPOIs,
-  findPath,
   updateRouteProgressView,
   clearRenderedPath,
   snapToRoute,

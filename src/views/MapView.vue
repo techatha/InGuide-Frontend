@@ -5,7 +5,11 @@
       <SearchResultsView />
     </div>
     <div v-show="!uiStore.isSearchFocused">
-      <RouterView @navigate-to="generateRoute" v-slot="{ Component }">
+      <RouterView
+        @navigate-to="generateRoute"
+        @stop-map-interval="stopMapInterval"
+        v-slot="{ Component }"
+      >
         <keep-alive include="RecommendedView">
           <component :is="Component" />
         </keep-alive>
@@ -36,12 +40,11 @@ import MenuPanel from '@/components/MenuPanel.vue'
 import SearchResultsView from '@/views/mapPanelViews/SearchResultsView.vue'
 import { findNearestBeacon } from '@/utils/findNearestBeacon'
 import type { Beacon } from '@/types/beacon'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useNavigationStore } from '@/stores/navigation'
 
 const { isAppInitialized } = useAppInitializer()
 
-const route = useRoute()
 const router = useRouter()
 
 const showPopup = ref(false)
@@ -75,7 +78,7 @@ const startMapInterval = async () => {
     const snappedLatLng = await props.mapDisplayRef.snapToPath(
       mapInfo.current_buildingId,
       mapInfo.current_floor.id,
-      latLng
+      latLng,
     )
     position.init(snappedLatLng)
     isAppInitialized.value = true
@@ -91,7 +94,7 @@ const startMapInterval = async () => {
     const snappedPos = await props.mapDisplayRef.snapToPath(
       mapInfo.current_buildingId,
       mapInfo.current_floor.id,
-      userPos
+      userPos,
     )
     const heading = position.getRadHeading()
     // console.log("heading :", heading)
@@ -127,30 +130,39 @@ const requestPermissions = async () => {
   }
 }
 
-const generateRoute = async (poiId: string) => {
-  // CHANGED: CRITICAL - Stop the map interval before navigating
-  stopMapInterval()
+const generateRoute = (poiId: string) => {
+  // 2. Get raw user position
+  const userPos = position.getPosition() as [number, number]
+  if (!userPos || !userPos[0]) {
+    console.error('Could not get user position to start navigation.')
+    alert('Could not determine your current location.')
+    return // Just stop. Don't restart an interval that's already running.
+  }
 
-  // console.log(`generate a route to ${poiId}`)
-  const userPos = position.getPosition()
-  const snappedPos = await props.mapDisplayRef.snapToPath(
-    mapInfo.current_buildingId,
-    mapInfo.current_floor.id,
-    userPos
-  )
-  // console.log("finding path")
-  // run aStar (temp_start → poiId)
-  const { pathIds, clonedGraph } = await props.mapDisplayRef.findPath(snappedPos, poiId)
+  // --- Add your try...catch here ---
+  try {
+    // 3. Call the STORE's findPath function
+    const { pathIds, clonedGraph } = navigationStore.findPath(userPos, poiId)
 
-  console.log(pathIds)
-  console.log(clonedGraph)
+    // 4. Check if a path was found
+    if (pathIds && pathIds.length > 0) {
+      // 5. Update the store
+      navigationStore.setNavigationRoute(pathIds)
+      navigationStore.setCurrentRouteGraph(clonedGraph)
+      navigationStore.setDestination(poiId)
 
-  navigationStore.setNavigationRoute(pathIds)
-  navigationStore.setNavigationGraph(clonedGraph)
-
-  // draw
-  props.mapDisplayRef.renderRoute(pathIds, clonedGraph)
-  router.push({ name: 'navigationOverview', params: { id: route.params.id } })
+      // 6. Push to the overview route
+      router.push({ name: 'navigationOverview', params: { id: poiId } })
+    } else {
+      console.error('Could not find a path to that destination.')
+      alert('A path to that destination could not be found.')
+      // 7. Don't restart the interval. Just let the user try again.
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error('Failed to find path:', error)
+    alert('Navigation data is not available for this building. Please contact an administrator.')
+  }
 }
 
 watch(
@@ -180,14 +192,14 @@ watch(
       }
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 watch(
   () => uiStore.isSearchFocused,
   () => {
     uiStore.fullExpand()
-  }
+  },
 )
 
 // CHANGED: Add new watcher to restart the map interval when navigation ends
@@ -199,7 +211,7 @@ watch(
       console.log('Navigation ended, restarting Page 1 (snapToPath) interval')
       startMapInterval()
     }
-  }
+  },
 )
 
 // CHANGED: Add unmount hook to clean up the interval if the main view is ever destroyed

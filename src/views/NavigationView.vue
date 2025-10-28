@@ -117,18 +117,18 @@ const directionIcons: { [key: string]: IconDefinition } = {
 }
 
 onMounted(() => {
-  if (navigationStore.navigationRoute.length === 0 || !navigationStore.navigationGraph) {
+  if (navigationStore.navigationRoute.length === 0 || !navigationStore.currentRouteGraph) {
     console.warn('No navigation data found. Redirecting to recommendations.')
     router.push({ name: 'recommend' })
-    return // Stop the rest of the function from executing
+    return
   }
 
   if (navigationStore.navigationRoute.length > 0) {
-    if (navigationStore.navigationGraph) {
+    if (navigationStore.currentRouteGraph) {
       const currentHeading = position.getRadHeading()
       generateInstructions(
         navigationStore.navigationRoute,
-        navigationStore.navigationGraph,
+        navigationStore.currentRouteGraph,
         currentHeading,
       )
     }
