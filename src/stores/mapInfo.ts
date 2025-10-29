@@ -57,7 +57,7 @@ export const useMapInfoStore = defineStore('mapInfo', () => {
 
   function findPOIbyId(id: string) {
     const trimmedId = id.trim()
-    
+
     const targetPoi = currentBuildingPOIs.value.find((p) => p.id === trimmedId)
     if (!targetPoi) {
       console.warn(`POI with id "${id}" not found.`)
@@ -76,6 +76,7 @@ export const useMapInfoStore = defineStore('mapInfo', () => {
   }
 
   return {
+    currentBuilding,
     isMapInitialized,
     setMapInitialized,
     current_buildingId,

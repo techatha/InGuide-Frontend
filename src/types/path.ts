@@ -3,6 +3,7 @@ export interface MapNode {
   coordinates: [number, number];
   isPOI?: boolean;
   isIntersection?: boolean;
+  portalGroup?: string;
 }
 
 export interface MapEdge {

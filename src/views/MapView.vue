@@ -70,15 +70,43 @@ const startMapInterval = async () => {
 
   // This is all your original init logic, runs only once
   if (!isAppInitialized.value) {
-    const initBeacon = localStorage.getItem('beaconID')
-    const checkedBeacon = await beaconStore.findBeaconById(initBeacon ?? '')
-    const latLng = checkedBeacon.latLng
-    console.log(initBeacon)
-    console.log(latLng)
+    const initBeaconId = localStorage.getItem('beaconID')
+    const checkedBeacon = await beaconStore.findBeaconById(initBeaconId ?? '')
+    let initialLatLng: [number, number];
+
+    // ** THIS IS THE FIX **
+    // Check if the beacon was found AND has latLng
+    if (checkedBeacon && checkedBeacon.latLng) {
+      initialLatLng = checkedBeacon.latLng;
+      console.log(`Initializing position with beacon '${initBeaconId}' at ${initialLatLng}`);
+    } else {
+      // If beacon not found, use a default location (e.g., center of map bounds)
+      console.warn(`Initial beacon '${initBeaconId}' not found or invalid. Using default map center.`);
+      // Calculate a default center from building bounds (ideally get bounds from mapInfo store)
+      let defaultLat: number;
+      let defaultLng: number;
+
+      // Check if building data is loaded
+      if (mapInfo.currentBuilding && mapInfo.currentBuilding.NE_bound && mapInfo.currentBuilding.SW_bound) {
+        // Calculate center from building bounds
+        defaultLat = (mapInfo.currentBuilding.NE_bound[0] + mapInfo.currentBuilding.SW_bound[0]) / 2;
+        defaultLng = (mapInfo.currentBuilding.NE_bound[1] + mapInfo.currentBuilding.SW_bound[1]) / 2;
+        console.log("Using building bounds for default center.");
+      } else {
+        // Hardcoded fallback if building data isn't ready (use your original values)
+        console.warn("Building data not available, using hardcoded fallback center.");
+        defaultLat = (18.799062936888 + 18.79977192091592) / 2;
+        defaultLng = (98.9503180904669 + 98.95093944127089) / 2;
+      }
+      initialLatLng = [defaultLat, defaultLng];
+      alert("[ERROR] Can't get user's location, please rescan the QR code for more percise location tracking T-T")
+    }
+    console.log(initBeaconId)
+    console.log(initialLatLng)
     const snappedLatLng = await props.mapDisplayRef.snapToPath(
       mapInfo.current_buildingId,
       mapInfo.current_floor.id,
-      latLng,
+      initialLatLng,
     )
     position.init(snappedLatLng)
     isAppInitialized.value = true
@@ -98,11 +126,12 @@ const startMapInterval = async () => {
     )
     const heading = position.getRadHeading()
     // console.log("heading :", heading)
-    const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.beacons as Beacon[])
+    const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.currentFloorBeacons as Beacon[])
     if (nearestBeacon && nearestBeacon?.distance < 0.01)
       position.resetToBeacon(nearestBeacon?.beacon as Beacon)
 
-    props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading)
+    props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading, position.currentUserFloor.value)
+    // console.log("User position setted")
     // props.mapDisplayRef.setUserDebugPosition(userPos)
   }, 1000)
 }

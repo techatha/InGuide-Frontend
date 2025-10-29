@@ -13,6 +13,7 @@ import type { IMUData, Acceleration, RotationRate } from '@/types/IMU'
 import type { PredictionResponse, Probability } from '@/types/prediction'
 import type { Beacon } from '@/types/beacon'
 import { preprocess } from '@/utils/ModelPreprocess'
+import { useBeaconStore } from '@/stores/beacon'
 
 const isInitialized = ref(false)
 
@@ -35,7 +36,11 @@ const latestGPSLng = ref<number | null>(null)
 const latestIMUData = ref<IMUData | null>(null)
 const latestPrediction = ref<PredictionResponse | null>(null)
 
+const currentUserFloor = ref<number | null>(null)
+
 export function usePositioningSystem() {
+  const beaconStore = useBeaconStore()
+
   /**
    * Initializes all sensors and filters.
    */
@@ -45,8 +50,40 @@ export function usePositioningSystem() {
     windowSize: number = 4000,
   ): boolean {
     if (isInitialized.value) {
-      console.log('Positioning system already initialized. Skipping setup.');
-      return true;
+      console.log('Positioning system already initialized. Skipping setup.')
+      return true
+    }
+
+    try {
+      const initBeaconId = localStorage.getItem('beaconID') || '' // Use empty string if null
+      if (initBeaconId) {
+        // --- THIS IS THE FIX ---
+        // Call the updated store function
+        const beaconInfo = beaconStore.findBeaconAndFloorById(initBeaconId) // No 'await' needed
+
+        console.log("Init User position with", initBeaconId, beaconInfo)
+
+        // Check the corrected return structure
+        if (beaconInfo && beaconInfo.floorNumber !== undefined && beaconInfo.floorNumber !== null) {
+          currentUserFloor.value = beaconInfo.floorNumber // Use floorNumber directly
+          console.log(
+            `Initialized user floor to ${currentUserFloor.value} based on beacon ${initBeaconId}`,
+          )
+        } else {
+          console.warn(
+            `Could not find floor for initial beacon ${initBeaconId}. Floor tracking disabled.`,
+          )
+          // Optionally default to the first floor shown on map if beacon floor unknown
+          // currentUserFloor.value = mapInfo.current_floor?.floor ?? null;
+        }
+        // --- END FIX ---
+      } else {
+        console.warn('No initial beacon found in localStorage. Floor tracking disabled.')
+        // Optionally default here too
+        // currentUserFloor.value = mapInfo.current_floor?.floor ?? null;
+      }
+    } catch (error) {
+      console.error('Error determining initial floor from beacon:', error)
     }
 
     gps.init()
@@ -189,6 +226,9 @@ export function usePositioningSystem() {
   function resetToBeacon(beacon: Beacon) {
     kf1.deadReckon.value?.resetToBeacon(beacon)
   }
+  function setCurrentFloor(floor: number) {
+    currentUserFloor.value = floor
+  }
 
   return {
     init,
@@ -201,6 +241,8 @@ export function usePositioningSystem() {
     imu,
     orien,
     isPermissionGranted,
+    currentUserFloor,
+    setCurrentFloor
   }
 }
 
@@ -209,4 +251,3 @@ function pushToWindowBuffer() {
     windowBuffer.push(latestIMUData.value, latestGPSLat.value, latestGPSLng.value)
   }
 }
-

@@ -64,54 +64,60 @@ const changeFloorPlan = async (floor: Floor) => {
   poi.removePOIs()
   const newPOIs = await PoiService.getPOIs(build_id, floor.id)
   mapInfo.loadPOIs(newPOIs)
-  const newBeacons = await beaconService.getBeacons(build_id, floor.id)
-  beaconStore.loadBeacons(newBeacons)
   // path.renderFloorPaths(build_id, floor.id)
   // reload new POIs
   const allPOIs = await PoiService.getAllPOIs(build_id)
   mapInfo.loadBuildingAllPois(allPOIs)
+
+  console.log(
+    'Graph for Floor',
+    floor.floor,
+    ':',
+    floor.graph,
+    'compute :',
+    currentFloorRouteSegment,
+  )
 }
 
 onMounted(async () => {
   // Wrap all async setup logic in one try...catch
   try {
-    const build_id = mapInfo.current_buildingId;
-    const floors: Floor[] = await buildingService.getFloors(build_id);
-    mapInfo.loadFloors(floors);
-    mapInfo.current_floor = floors[0];
+    const build_id = mapInfo.current_buildingId
+    const floors: Floor[] = await buildingService.getFloors(build_id)
+    mapInfo.loadFloors(floors)
+    mapInfo.current_floor = floors[0]
 
-    const POIs: POI[] = await PoiService.getPOIs(build_id, floors[0].id);
-    mapInfo.loadPOIs(POIs);
+    const POIs: POI[] = await PoiService.getPOIs(build_id, floors[0].id)
+    mapInfo.loadPOIs(POIs)
 
-    const newBeacons = await beaconService.getBeacons(build_id, floors[0].id);
-    beaconStore.loadBeacons(newBeacons);
+    const newBeacons = await beaconService.getAllBeacons(build_id)
+    beaconStore.loadAllBeacons(newBeacons)
 
     // Initialize the map display
-    await mapDisplay.init(mapContainer.value as HTMLElement, poiLayer, pathLayer);
-    await mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url);
-    mapDisplay.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number]);
-    mapDisplay.setView(bounds[0] as [number, number]);
+    await mapDisplay.init(mapContainer.value as HTMLElement, poiLayer, pathLayer)
+    await mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url)
+    mapDisplay.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
+    mapDisplay.setView(bounds[0] as [number, number])
 
     // --- Load Super Graph ---
-    const superGraph = await NavGraphService.getSuperGraph(build_id);
-    console.log("Map Display", superGraph)
-    navigationStore.setNavigationGraph(superGraph);
-    console.log('Super graph loaded and stored.');
+    const superGraph = await NavGraphService.getSuperGraph(build_id)
+    console.log('Map Display', superGraph)
+    navigationStore.setNavigationGraph(superGraph)
+    console.log('Super graph loaded and stored.')
     // --- End Super Graph ---
 
     // Load all POIs as well
-    const buildingPOIs = await PoiService.getAllPOIs(build_id);
-    mapInfo.loadBuildingAllPois(buildingPOIs);
+    const buildingPOIs = await PoiService.getAllPOIs(build_id)
+    mapInfo.loadBuildingAllPois(buildingPOIs)
 
     // Set initialized to true ONLY after everything has succeeded
-    mapInfo.setMapInitialized(true);
-
+    mapInfo.setMapInitialized(true)
   } catch (error) {
     // This one block will catch *any* error from the services above
-    console.error('Failed to initialize map or load essential data:', error);
+    console.error('Failed to initialize map or load essential data:', error)
     // Here you could set a global error state to show a "Failed to load map" message
   }
-});
+})
 
 watch(
   () => mapInfo.floorPOIs,
@@ -130,14 +136,38 @@ watch(
 
 const currentFloorRouteSegment = computed(() => {
   const fullRoute = navigationStore.navigationRoute
-  // Get the graph directly from the Floor object (already converted)
   const currentFloorGraph = mapInfo.current_floor?.graph
+  const currentRouteGraph = navigationStore.currentRouteGraph
 
-  if (!navigationStore.isNavigating || !currentFloorGraph?.nodes) {
+  // Basic checks
+  if (
+    !navigationStore.isNavigating ||
+    !currentFloorGraph?.nodes ||
+    !currentRouteGraph?.nodes ||
+    fullRoute.length === 0
+  ) {
     return []
   }
-  // Filter using the Map-based graph
-  return fullRoute.filter(nodeId => currentFloorGraph.nodes.has(nodeId))
+
+  const realNodesOnFloor = fullRoute.filter((nodeId) => currentFloorGraph.nodes.has(nodeId))
+  if (realNodesOnFloor.length === 0) {
+    return []
+  }
+  let tempNodeId: string | null = null
+  for (const nodeId of currentRouteGraph.nodes.keys()) {
+    if (nodeId.startsWith('temp_')) {
+      tempNodeId = nodeId
+      break // Found it, stop searching
+    }
+  }
+
+  if (tempNodeId && fullRoute.length > 1 && realNodesOnFloor[0] === fullRoute[1]) {
+    // Prepend the temporary node ID
+    return [tempNodeId, ...realNodesOnFloor]
+  } else {
+    // Just return the real nodes
+    return realNodesOnFloor
+  }
 })
 
 // --- 6. ADD watch to render the filtered route ---
@@ -146,13 +176,14 @@ watch(
   [() => currentFloorRouteSegment.value, () => navigationStore.currentRouteGraph],
   ([pathSegment, routeGraph]) => {
     clearRenderedPath() // Clear old path
+    console.log(pathSegment)
 
     // Only render if we have a segment AND the full route graph
     if (pathSegment && pathSegment.length > 0 && routeGraph) {
       renderRoute(pathSegment, routeGraph)
     }
   },
-  { immediate: true } // Run once on load
+  { immediate: true }, // Run once on load
 )
 
 // Define Expose Functions
@@ -163,12 +194,33 @@ async function snapToPath(buildingId: string, floorId: string, position: [number
   }
   return await path.snapToPath(buildingId, floorId, position)
 }
-function setUserPosition(newLatLng: [number, number], headingRad: number) {
+function setUserPosition(
+  newLatLng: [number, number],
+  headingRad: number,
+  currentUserFloor: number | null
+) {
   if (!newLatLng[0] || !newLatLng[1]) {
     console.warn('Skipping setUserPosition because latlng is null')
     return
   }
   mapDisplay.setUserPosition(newLatLng, headingRad)
+
+  const mapFloor = mapInfo.current_floor?.floor
+  // console.log(currentUserFloor !== null, mapFloor !== undefined, currentUserFloor === mapFloor)
+
+  // Compare user's actual floor with the map's displayed floor
+  if (currentUserFloor !== null && mapFloor !== undefined && currentUserFloor === mapFloor) {
+    // Floors match: Call the internal useMap function to show/update
+    // console.log("SHOW yoURSelF~~")
+    mapDisplay.setUserPosition(newLatLng, headingRad)
+  } else {
+    // Floors don't match (or user floor unknown): Call the internal useMap function to hide
+    // console.log("HIDDE")
+    mapDisplay.hideUserPosition()
+  }
+}
+function hideUserPosition() {
+  mapDisplay.hideUserPosition()
 }
 function setUserDebugPosition(newLatLng: [number, number]) {
   if (!newLatLng[0] || !newLatLng[1]) {
@@ -181,31 +233,42 @@ function renderPaths(graph: NavigationGraph) {
   path.renderPaths(graph)
 }
 function renderRoute(pathIds: string[], graph: NavigationGraph) {
-  console.log("route rendering start!", {"pathIds": pathIds, 'graph': graph})
+  console.log('route rendering start!', { pathIds: pathIds, graph: graph })
   path.renderRoute(pathIds, graph)
 }
 function clearRenderedPath() {
   path.clearWalkablePaths()
 }
-function updateRouteProgressView(userPosition: [number, number]) {
+function updateRouteProgressView(userPosition: [number, number], currentUserFloor: number | null) {
+  const mapFloor = mapInfo.current_floor?.floor
+  if (currentUserFloor === null || mapFloor === undefined || currentUserFloor !== mapFloor) {
+    // If user's floor is unknown, map floor is unknown, or they don't match,
+    // DO NOT update the progress view for this floor.
+    // Keep the existing full segment drawn by renderRoute.
+    // console.log(`Skipping updateRouteProgressView: User floor (${currentUserFloor}) != Map floor (${mapFloor})`);
+    return
+  }
   // 1. Get the currently displayed route from the Leaflet layer
-  const layers = pathLayer.getLayers();
+  const layers = pathLayer.getLayers()
   if (layers.length === 0) {
-    console.warn("updateRouteProgressView called, but no route is on the map.");
-    return;
+    console.warn('updateRouteProgressView called, but no route is on the map.')
+    return
   }
 
-  const routePolyline = layers[0] as L.Polyline;
-  const fullRouteLatLngs = routePolyline.getLatLngs() as L.LatLng[];
+  const routePolyline = layers[0] as L.Polyline
+  const fullRouteLatLngs = routePolyline.getLatLngs() as L.LatLng[]
 
   // Convert Leaflet's LatLng objects back to simple [lat, lng] arrays
-  const fullRouteCoords: [number, number][] = fullRouteLatLngs.map(latlng => [latlng.lat, latlng.lng]);
+  const fullRouteCoords: [number, number][] = fullRouteLatLngs.map((latlng) => [
+    latlng.lat,
+    latlng.lng,
+  ])
 
   // 2. Ask the `path` composable to do the complex splitting logic
-  const { traversed, upcoming } = path.splitRouteAtPoint(fullRouteCoords, userPosition);
+  const { traversed, upcoming } = path.splitRouteAtPoint(fullRouteCoords, userPosition)
 
   // 3. Tell the `path` composable to render the new split view
-  path.renderRouteProgress(traversed, upcoming);
+  path.renderRouteProgress(traversed, upcoming)
 }
 
 function renderPOIs(pois: POI[]) {
@@ -219,6 +282,7 @@ function snapToRoute(subgraph: NavigationGraph, position: [number, number]): [nu
 defineExpose({
   snapToPath,
   setUserPosition,
+  hideUserPosition,
   setUserDebugPosition,
   renderPaths,
   renderRoute,

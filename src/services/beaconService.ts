@@ -18,6 +18,17 @@ async function getBeacons(buildingId: string, floorId: string): Promise<Beacon[]
   }
 }
 
+async function getAllBeacons(buildingId: string): Promise<Beacon[]> {
+  try {
+    const response = await httpClient.get(`/beacon/${buildingId}/all_beacons`)
+    return response.data
+  } catch (err) {
+    console.error(`Error getting beacons for ${buildingId}...`, err)
+    throw err
+  }
+}
+
 export default {
   getBeacons,
+  getAllBeacons
 }

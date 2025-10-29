@@ -140,7 +140,7 @@ onMounted(() => {
     // position.correctWithMapMatching(snappedPos as [number, number]);
     const heading = position.getRadHeading()
     // console.log("heading :", heading)
-    const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.beacons as Beacon[])
+    const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.currentFloorBeacons as Beacon[])
     if (nearestBeacon && nearestBeacon?.distance < 0.01)
       position.resetToBeacon(nearestBeacon?.beacon as Beacon)
 
@@ -150,10 +150,10 @@ onMounted(() => {
     )
 
     // 5. Tell MapView to draw the user dot at the snapped position
-    props.mapDisplayRef.setUserPosition(snappedPos, heading)
+    props.mapDisplayRef.setUserPosition(snappedPos, heading, position.currentUserFloor)
 
     // 6. Tell MapView to update the route line (traversed/upcoming)
-    props.mapDisplayRef.updateRouteProgressView(snappedPos)
+    props.mapDisplayRef.updateRouteProgressView(snappedPos, position.currentUserFloor.value)
 
     // 7. Tell turn-by-turn logic to update instructions
     updateUserProgress(snappedPos)
