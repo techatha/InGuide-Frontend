@@ -325,24 +325,38 @@ export function useTurnByTurn() {
     if (!instructionAdvancedThisCycle && currentStepIndex.value < essentialIds.length - 1) {
       const currentTargetNodeId = essentialIds[currentStepIndex.value];
       const currentTargetInFullPathIndex = fullPathIds.indexOf(currentTargetNodeId);
+      const userCurrentFloor = position.currentUserFloor.value; // Get the user's current floor
 
       let closestFullPathSegmentIndex = -1;
       let minDistanceToFullPathSegment = Infinity;
 
       for (let i = 0; i < fullPathIds.length - 1; i++) {
-        const fromCoord = graph.nodes.get(fullPathIds[i])?.coordinates;
-        const toCoord = graph.nodes.get(fullPathIds[i + 1])?.coordinates;
+        const fromNodeId = fullPathIds[i];
+        const toNodeId = fullPathIds[i+1];
+
+        const fromCoord = graph.nodes.get(fromNodeId)?.coordinates;
+        const toCoord = graph.nodes.get(toNodeId)?.coordinates;
         if (!fromCoord || !toCoord) continue;
 
-        const fromNode = graph.nodes.get(fullPathIds[i]);
-        const toNode = graph.nodes.get(fullPathIds[i + 1]);
+        // --- THIS IS THE FIX ---
+        // Get the floor of this segment (using its starting node)
+        const segmentFloor = nodeToFloorMap.get(fromNodeId);
+
+        // Only check segments that are on the user's current floor
+        if (segmentFloor !== userCurrentFloor) {
+            continue; // Skip this segment, it's on a different floor
+        }
+        // --- END FIX ---
+
+        const fromNode = graph.nodes.get(fromNodeId);
+        const toNode = graph.nodes.get(toNodeId);
+        // Skip virtual portal segments (this is still correct)
         if (fromNode?.portalGroup && toNode?.portalGroup && fromNode.portalGroup === toNode.portalGroup) {
-          continue; // Skip portal segments for snapping
+          continue;
         }
 
         const line = turf.lineString([switchLatLng(fromCoord), switchLatLng(toCoord)]);
         const point = turf.point(switchLatLng(userPos));
-        // Use pointToLineDistance for accurate "off-track" distance
         const dist = turf.pointToLineDistance(point, line, { units: 'meters' });
 
         if (dist < minDistanceToFullPathSegment) {
@@ -351,13 +365,12 @@ export function useTurnByTurn() {
         }
       }
 
-      // If user's closest segment is at or after the current target's segment, advance
+      // If user's closest segment (on their floor) is at or after the current target's segment, advance
       if (closestFullPathSegmentIndex >= currentTargetInFullPathIndex && currentTargetInFullPathIndex !== -1) {
         console.log(`Confirmation Check Passed: Advancing step.`);
         currentStepIndex.value++;
 
-        // --- DUPLICATED LOGIC ---
-        // Check if the instruction we just *completed* was a portal
+        // --- DUPLICATED LOGIC (This is all correct) ---
         const completedInstructionDirection = directions.value[currentStepIndex.value - 1];
         if (completedInstructionDirection === 'PORTAL') {
           const portalExitNodeId = essentialIds[currentStepIndex.value];
@@ -505,6 +518,7 @@ export function useTurnByTurn() {
     estimatedTime,
     arrivalTime,
     isAtDestination,
+    nodeToFloorMap,
   }
 }
 

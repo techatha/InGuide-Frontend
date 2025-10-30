@@ -275,8 +275,10 @@ function renderPOIs(pois: POI[]) {
   poi.renderPOIs(pois)
 }
 
-function snapToRoute(subgraph: NavigationGraph, position: [number, number]): [number, number] {
-  return path.snapToRoute(subgraph, position)
+function snapToRoute(subgraph: NavigationGraph, position: [number, number], userFloor = 1, nodeToFloorMap: Map<string, number>): [number, number] {
+  const snappdePos = path.snapToRoute(subgraph, position, userFloor, nodeToFloorMap)
+  console.log(snappdePos)
+  return snappdePos
 }
 
 defineExpose({

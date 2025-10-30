@@ -98,6 +98,7 @@ const {
   estimatedTime,
   arrivalTime,
   isAtDestination,
+  nodeToFloorMap,
 } = useTurnByTurn()
 const props = defineProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -146,7 +147,9 @@ onMounted(() => {
 
     const snappedPos = props.mapDisplayRef.snapToRoute(
       navigationStore.routeSubgraph,
-      userPos
+      userPos,
+      position.currentUserFloor.value, // Pass the user's floor
+      nodeToFloorMap                  // Pass the node-to-floor map
     )
 
     // 5. Tell MapView to draw the user dot at the snapped position
