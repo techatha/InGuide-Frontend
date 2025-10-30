@@ -26,7 +26,6 @@
 </template>
 
 <script setup lang="ts">
-// CHANGED: Added onUnmounted
 import { ref, watch, onUnmounted } from 'vue'
 import { useAppInitializer } from '@/composables/useAppInitializer'
 import { usePositioningSystem } from '@/composables/usePositioningSystem'
@@ -39,7 +38,6 @@ import PopUpWindow from '@/components/PopUpWindow.vue'
 import MenuPanel from '@/components/MenuPanel.vue'
 import SearchResultsView from '@/views/mapPanelViews/SearchResultsView.vue'
 import { findNearestBeacon } from '@/utils/findNearestBeacon'
-import type { Beacon } from '@/types/beacon'
 import { useRouter } from 'vue-router'
 import { useNavigationStore } from '@/stores/navigation'
 
@@ -72,34 +70,42 @@ const startMapInterval = async () => {
   if (!isAppInitialized.value) {
     const initBeaconId = localStorage.getItem('beaconID')
     const checkedBeacon = await beaconStore.findBeaconById(initBeaconId ?? '')
-    let initialLatLng: [number, number];
+    let initialLatLng: [number, number]
 
     // ** THIS IS THE FIX **
     // Check if the beacon was found AND has latLng
     if (checkedBeacon && checkedBeacon.latLng) {
-      initialLatLng = checkedBeacon.latLng;
-      console.log(`Initializing position with beacon '${initBeaconId}' at ${initialLatLng}`);
+      initialLatLng = checkedBeacon.latLng
+      console.log(`Initializing position with beacon '${initBeaconId}' at ${initialLatLng}`)
     } else {
       // If beacon not found, use a default location (e.g., center of map bounds)
-      console.warn(`Initial beacon '${initBeaconId}' not found or invalid. Using default map center.`);
+      console.warn(
+        `Initial beacon '${initBeaconId}' not found or invalid. Using default map center.`,
+      )
       // Calculate a default center from building bounds (ideally get bounds from mapInfo store)
-      let defaultLat: number;
-      let defaultLng: number;
+      let defaultLat: number
+      let defaultLng: number
 
       // Check if building data is loaded
-      if (mapInfo.currentBuilding && mapInfo.currentBuilding.NE_bound && mapInfo.currentBuilding.SW_bound) {
+      if (
+        mapInfo.currentBuilding &&
+        mapInfo.currentBuilding.NE_bound &&
+        mapInfo.currentBuilding.SW_bound
+      ) {
         // Calculate center from building bounds
-        defaultLat = (mapInfo.currentBuilding.NE_bound[0] + mapInfo.currentBuilding.SW_bound[0]) / 2;
-        defaultLng = (mapInfo.currentBuilding.NE_bound[1] + mapInfo.currentBuilding.SW_bound[1]) / 2;
-        console.log("Using building bounds for default center.");
+        defaultLat = (mapInfo.currentBuilding.NE_bound[0] + mapInfo.currentBuilding.SW_bound[0]) / 2
+        defaultLng = (mapInfo.currentBuilding.NE_bound[1] + mapInfo.currentBuilding.SW_bound[1]) / 2
+        console.log('Using building bounds for default center.')
       } else {
         // Hardcoded fallback if building data isn't ready (use your original values)
-        console.warn("Building data not available, using hardcoded fallback center.");
-        defaultLat = (18.799062936888 + 18.79977192091592) / 2;
-        defaultLng = (98.9503180904669 + 98.95093944127089) / 2;
+        console.warn('Building data not available, using hardcoded fallback center.')
+        defaultLat = (18.799062936888 + 18.79977192091592) / 2
+        defaultLng = (98.9503180904669 + 98.95093944127089) / 2
       }
-      initialLatLng = [defaultLat, defaultLng];
-      alert("[ERROR] Can't get user's location, please rescan the QR code for more percise location tracking T-T")
+      initialLatLng = [defaultLat, defaultLng]
+      alert(
+        "[ERROR] Can't get user's location, please rescan the QR code for more percise location tracking T-T",
+      )
     }
     console.log(initBeaconId)
     console.log(initialLatLng)
@@ -117,22 +123,46 @@ const startMapInterval = async () => {
 
   console.log('Starting Page 1 (snapToPath) interval')
   positionIntervalId.value = setInterval(async () => {
-    // console.log("UI Updated")
-    const userPos = position.getPosition()
-    const snappedPos = await props.mapDisplayRef.snapToPath(
-      mapInfo.current_buildingId,
-      mapInfo.current_floor.id,
-      userPos,
-    )
-    const heading = position.getRadHeading()
-    // console.log("heading :", heading)
-    const nearestBeacon = findNearestBeacon(userPos[0], userPos[1], beaconStore.currentFloorBeacons as Beacon[])
-    if (nearestBeacon && nearestBeacon?.distance < 0.01)
-      position.resetToBeacon(nearestBeacon?.beacon as Beacon)
+    try {
+      const userPos = position.getPosition()
+      if (!userPos || !userPos[0] || !userPos[1]) return
 
-    props.mapDisplayRef.setUserPosition(snappedPos as [number, number], heading, position.currentUserFloor.value)
-    // console.log("User position setted")
-    // props.mapDisplayRef.setUserDebugPosition(userPos)
+      // --- REMOVE FLOOR CHECK FROM HERE ---
+      // Always attempt to snap and set position during browsing.
+      // MapDisplay.vue's setUserPosition will handle visibility.
+
+      const snappedPos = await props.mapDisplayRef.snapToPath(
+        mapInfo.current_buildingId,
+        mapInfo.current_floor.id, // Ensure current_floor is valid here
+        userPos,
+      )
+      if (!snappedPos || !snappedPos[0] || !snappedPos[1]) return // Check snap result
+
+      const heading = position.getRadHeading()
+      const currentFloor = position.currentUserFloor.value // Still needed for nearest beacon
+
+      // Call the updated function - MapDisplay will decide to show/hide
+      props.mapDisplayRef.setUserPosition(
+        snappedPos as [number, number],
+        heading,
+        currentFloor, // Pass the floor
+      )
+
+      // Nearest beacon logic is fine, but only relevant if marker is shown
+      if (currentFloor === mapInfo.current_floor?.floor) {
+        const nearestBeacon = findNearestBeacon(
+          snappedPos[0],
+          snappedPos[1],
+          beaconStore.currentFloorBeacons,
+        )
+        if (nearestBeacon && nearestBeacon.distance < 0.01 && nearestBeacon.beacon) {
+          position.resetToBeacon(nearestBeacon.beacon)
+        }
+      }
+      // --- END CHANGE ---
+    } catch (error) {
+      console.error('Error inside map interval (Page 1):', error)
+    }
   }, 1000)
 }
 

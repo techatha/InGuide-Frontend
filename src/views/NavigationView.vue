@@ -150,7 +150,7 @@ onMounted(() => {
     )
 
     // 5. Tell MapView to draw the user dot at the snapped position
-    props.mapDisplayRef.setUserPosition(snappedPos, heading, position.currentUserFloor)
+    props.mapDisplayRef.setUserPosition(snappedPos, heading, position.currentUserFloor.value)
 
     // 6. Tell MapView to update the route line (traversed/upcoming)
     props.mapDisplayRef.updateRouteProgressView(snappedPos, position.currentUserFloor.value)
