@@ -151,7 +151,6 @@ export function useMap(map: Ref<Map | null>) {
     _mapBound = L.latLngBounds(sw, ne);      // Update the internal bounds variable.
     toRaw(map.value)?.fitBounds(_mapBound); // Adjust map view to show the new bounds.
     _mapImageOverlay?.setBounds(_mapBound);  // Resize the image overlay to match.
-    toRaw(map.value)?.setView(sw);          // Optionally set the view (e.g., to SW corner).
   }
 
   /**

@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useMapInfoStore } from './mapInfo'
+import type { POI } from '@/types/poi'
 
 export const useUIMenuPanelStore = defineStore('uiMenuPanel', () => {
   const isSearchFocused = ref(false)
@@ -7,6 +9,38 @@ export const useUIMenuPanelStore = defineStore('uiMenuPanel', () => {
   const isFullyExpanded = ref(false)
   const isShowDetail = ref(false)
   const isStartingNav = ref(false)
+
+  const searchQuery = ref('')
+  const searchResults = ref<POI[]>([])
+
+  // --- NEW "Search Service" Action ---
+  function performSearch() {
+    const mapInfo = useMapInfoStore() // Get the other store
+    const allPOIs = mapInfo.currentBuildingPOIs
+
+    const query = searchQuery.value.trim().toLowerCase()
+
+    if (!query) {
+      searchResults.value = [] // Clear results if query is empty
+      return
+    }
+
+    // Filter the full POI list from the mapInfo store
+    searchResults.value = allPOIs.filter(poi => {
+      const nameMatch = poi.name.toLowerCase().includes(query)
+      return nameMatch
+    })
+  }
+
+  function clearSearch() {
+    searchQuery.value = ''
+    searchResults.value = []
+  }
+
+  function cancelSearch() {
+    clearSearch()
+    isSearchFocused.value = false
+  }
 
   function showDetail() {
     isExpanded.value = false
@@ -40,6 +74,12 @@ export const useUIMenuPanelStore = defineStore('uiMenuPanel', () => {
   }
 
   return {
+    searchQuery,
+    searchResults,
+    performSearch,
+    clearSearch,
+    cancelSearch,
+
     isSearchFocused,
     isExpanded,
     isFullyExpanded,

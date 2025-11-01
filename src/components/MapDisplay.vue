@@ -50,10 +50,10 @@ const navigationStore = useNavigationStore()
 
 // this is setup for test
 // CAMT Building location
-const bounds = [
-  [18.799062936888, 98.9503180904669], // South-West corner
-  [18.79977192091592, 98.95093944127089], // North-East corner
-]
+// const bounds = [
+//   [18.799062936888, 98.9503180904669], // South-West corner
+//   [18.79977192091592, 98.95093944127089], // North-East corner
+// ]
 
 const mapContainer = ref<HTMLElement | null>(null)
 
@@ -82,65 +82,6 @@ const changeFloorPlan = async (floor: Floor) => {
     currentFloorRouteSegment,
   )
 }
-
-onMounted(async () => {
-  // Wrap all async setup logic in one try...catch
-  try {
-    const build_id = mapInfo.current_buildingId
-    if(!build_id){
-      console.log("There is no buildID in pinia store T-T")
-      return
-    }
-
-    const floors: Floor[] = await buildingService.getFloors(build_id)
-    mapInfo.loadFloors(floors)
-    mapInfo.current_floor = floors[0]
-
-    const POIs: POI[] = await PoiService.getPOIs(build_id, floors[0].id)
-    mapInfo.loadPOIs(POIs)
-
-    const newBeacons = await beaconService.getAllBeacons(build_id)
-    beaconStore.loadAllBeacons(newBeacons)
-
-    // Initialize the map display
-    await mapDisplay.init(mapContainer.value as HTMLElement, poiLayer, pathLayer)
-    await mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url)
-    mapDisplay.setMapBound(bounds[0] as [number, number], bounds[1] as [number, number])
-    mapDisplay.setView(bounds[0] as [number, number])
-
-    // --- Load Super Graph ---
-    const superGraph = await NavGraphService.getSuperGraph(build_id)
-    console.log('Map Display', superGraph)
-    navigationStore.setNavigationGraph(superGraph)
-    console.log('Super graph loaded and stored.')
-    // --- End Super Graph ---
-
-    // Load all POIs as well
-    const buildingPOIs = await PoiService.getAllPOIs(build_id)
-    mapInfo.loadBuildingAllPois(buildingPOIs)
-
-    // Set initialized to true ONLY after everything has succeeded
-    mapInfo.setMapInitialized(true)
-  } catch (error) {
-    // This one block will catch *any* error from the services above
-    console.error('Failed to initialize map or load essential data:', error)
-    // Here you could set a global error state to show a "Failed to load map" message
-  }
-})
-
-watch(
-  () => mapInfo.floorPOIs,
-  (pois) => {
-    poi.removePOIs()
-    poi.renderPOIs(pois)
-  },
-)
-watch(
-  () => mapInfo.current_floor,
-  () => {
-    mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url)
-  },
-)
 
 const currentFloorRouteSegment = computed(() => {
   const fullRoute = navigationStore.navigationRoute
@@ -178,21 +119,75 @@ const currentFloorRouteSegment = computed(() => {
   }
 })
 
-// --- 6. ADD watch to render the filtered route ---
-watch(
-  // Watch both the segment AND the graph it depends on
-  [() => currentFloorRouteSegment.value, () => navigationStore.currentRouteGraph],
-  ([pathSegment, routeGraph]) => {
-    clearRenderedPath() // Clear old path
-    console.log(pathSegment)
+async function loadMapData(build_id: string) {
+  try {
+    console.log(`Loading all map data for building ID: ${build_id}`)
 
-    // Only render if we have a segment AND the full route graph
-    if (pathSegment && pathSegment.length > 0 && routeGraph) {
-      renderRoute(pathSegment, routeGraph)
+    // --- Start fetching data in parallel ---
+    // 1. ADD a promise to get the building's own info (including bounds)
+    const buildingPromise = buildingService.getBuilding(build_id)
+
+    const floorsPromise = buildingService.getFloors(build_id)
+    const beaconsPromise = beaconService.getAllBeacons(build_id)
+    const superGraphPromise = NavGraphService.getSuperGraph(build_id)
+    const allPOIsPromise = PoiService.getAllPOIs(build_id)
+
+    // --- Wait for the building info first ---
+    // We need its bounds to set the map's view
+    const building = await buildingPromise
+    if (!building || !building.NE_bound || !building.SW_bound) { // Assuming bounds are stored on the building object
+      console.error('Building data or bounds are missing!')
+      return
     }
-  },
-  { immediate: true }, // Run once on load
-)
+
+    // 2. NOW set the map bounds and view using the loaded data
+    mapDisplay.setMapBound(building.SW_bound, building.NE_bound)
+
+    // --- Wait for Floors (since we need it for the first floor POIs) ---
+    const floors: Floor[] = await floorsPromise
+    if (!floors || floors.length === 0) {
+      console.error('No floors found for this building.')
+      return // Stop if no floors
+    }
+    mapInfo.loadFloors(floors)
+    const firstFloor = floors[0]
+    mapInfo.current_floor = firstFloor
+
+    // --- Fetch first floor POIs (depends on floors) ---
+    const firstFloorPOIsPromise = PoiService.getPOIs(build_id, firstFloor.id)
+
+    // --- Wait for ALL remaining promises to finish ---
+    const [
+      POIs,
+      newBeacons,
+      superGraph,
+      buildingPOIs
+    ] = await Promise.all([
+      firstFloorPOIsPromise,
+      beaconsPromise,
+      superGraphPromise,
+      allPOIsPromise
+    ])
+
+    // --- Load all data into stores ---
+    mapInfo.loadPOIs(POIs)
+    beaconStore.loadAllBeacons(newBeacons)
+    navigationStore.setNavigationGraph(superGraph)
+    mapInfo.loadBuildingAllPois(buildingPOIs)
+
+    console.log('Super graph and all data loaded.')
+
+    // --- Update map display with the first floor image ---
+    await mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url)
+
+    // Set initialized to true ONLY after everything has succeeded
+    mapInfo.setMapInitialized(true)
+    console.log('Map data initialization complete.')
+
+  } catch (error) {
+    console.error('Failed to initialize map or load essential data:', error)
+  }
+}
 
 // Define Expose Functions
 async function snapToPath(buildingId: string, floorId: string, position: [number, number]) {
@@ -226,6 +221,9 @@ function setUserPosition(
     // console.log("HIDDE")
     mapDisplay.hideUserPosition()
   }
+}
+function setViewToUser() {
+  mapDisplay.setViewToUser()
 }
 function hideUserPosition() {
   mapDisplay.hideUserPosition()
@@ -289,9 +287,65 @@ function snapToRoute(subgraph: NavigationGraph, position: [number, number], user
   return snappdePos
 }
 
+// --- 6. ADD watch to render the filtered route ---
+watch(
+  () => mapInfo.floorPOIs,
+  (pois) => {
+    poi.removePOIs()
+    poi.renderPOIs(pois)
+  },
+)
+watch(
+  () => mapInfo.current_floor,
+  () => {
+    mapDisplay.changeImageOverlay(mapInfo.current_floor.floor_plan_url)
+  },
+)
+watch(
+  // Watch both the segment AND the graph it depends on
+  [() => currentFloorRouteSegment.value, () => navigationStore.currentRouteGraph],
+  ([pathSegment, routeGraph]) => {
+    clearRenderedPath() // Clear old path
+    console.log(pathSegment)
+
+    // Only render if we have a segment AND the full route graph
+    if (pathSegment && pathSegment.length > 0 && routeGraph) {
+      renderRoute(pathSegment, routeGraph)
+    }
+  },
+  { immediate: true }, // Run once on load
+)
+watch(
+  () => mapInfo.current_buildingId,
+  (newBuildId) => {
+    if (newBuildId) {
+      // We have a valid ID, so load all the data
+      loadMapData(newBuildId)
+    } else {
+      // The ID was cleared (e.g., user logged out or went to home page)
+      console.log('Building ID is null. Clearing map data.')
+      // You can add logic here to clear the map, hide layers, etc.
+      mapInfo.setMapInitialized(false)
+      // mapDisplay.clearAllLayers() // You'd need to add this function to useMap
+    }
+  },
+  { immediate: true } // This makes it run once when the component mounts
+)
+
+onMounted(async () => {
+  try {
+    // ONLY initialize the map display.
+    await mapDisplay.init(mapContainer.value as HTMLElement, poiLayer, pathLayer)
+    console.log('Map container initialized.')
+  } catch (error) {
+    console.error('Failed to initialize map container:', error)
+  }
+})
+
 defineExpose({
   snapToPath,
   setUserPosition,
+  setViewToUser,
   hideUserPosition,
   setUserDebugPosition,
   renderPaths,

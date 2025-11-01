@@ -1,8 +1,8 @@
 <template>
   <div class="search-bar">
-    <input 
+    <input
       type="text"
-      v-model="query"
+      v-model="uiStore.searchQuery"
       placeholder="Search"
       class="search-input"
       @focus="uiStore.isSearchFocused = true"
@@ -22,7 +22,8 @@ const query = ref('')
 const uiStore = useUIMenuPanelStore()
 
 function handleSearch() {
-  console.log('Search:', query.value)
+  uiStore.searchQuery = query.value
+  uiStore.clearSearch()
 }
 </script>
 

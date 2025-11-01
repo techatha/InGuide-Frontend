@@ -1,7 +1,7 @@
 <template>
   <SearchBar />
   <MenuPanel>
-    <div v-show="uiStore.isSearchFocused">
+    <div v-show="uiStore.isSearchFocused || uiStore.searchQuery.length > 0">
       <SearchResultsView />
     </div>
     <div v-show="!uiStore.isSearchFocused">
@@ -165,6 +165,7 @@ const startMapInterval = async () => {
       console.error('Error inside map interval (Page 1):', error)
     }
   }, 1000)
+  props.mapDisplayRef.setViewToUser()
 }
 
 // CHANGED: Added new function to stop the interval
@@ -268,7 +269,8 @@ watch(
       // This async function will update the store
       mapInfo.changeBuilding(newBuildingId)
     }
-  }
+  },
+  { immediate: true }
 )
 // CHANGED: Add new watcher to restart the map interval when navigation ends
 watch(
