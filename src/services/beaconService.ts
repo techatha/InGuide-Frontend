@@ -28,7 +28,20 @@ async function getAllBeacons(buildingId: string): Promise<Beacon[]> {
   }
 }
 
+async function getBeaconBuilding(beaconId: string): Promise<{ buildingId: string }> {
+  try {
+    // This URL matches your new backend endpoint
+    const response = await httpClient.get(`/beacon/${beaconId}/get_buildingId`)
+    // The return type { buildingId: string } matches the backend
+    return response.data
+  } catch (err) {
+    console.error(`Error getting building for beacon ${beaconId}...`, err)
+    throw err
+  }
+}
+
 export default {
   getBeacons,
-  getAllBeacons
+  getAllBeacons,
+  getBeaconBuilding
 }

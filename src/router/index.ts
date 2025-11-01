@@ -4,6 +4,8 @@ import PoiDetail from '@/views/mapPanelViews/PoiDetailView.vue'
 import RecommendedView from '@/views/mapPanelViews/RecommendedView.vue'
 import NavigationOverviewView from '@/views/mapPanelViews/NavigationOverviewView.vue'
 import NavigationView from '@/views/NavigationView.vue'
+import beaconService from '@/services/beaconService'
+import RedirectView from '@/views/RedirectView.vue'
 
 // This is your app's default building ID
 const DEFAULT_BUILDING_ID = 'm0Jhe7OPU45kdGvKLZ0D'
@@ -59,14 +61,29 @@ const router = createRouter({
       props: true,
     },
     {
-      // IMPORTANT: Changed path to avoid conflict with /:buildingId
       path: '/beacon/:beaconID',
       name: 'beaconRedirect',
-      redirect: (to) => {
+      component: RedirectView,
+      beforeEnter: async (to) => {
         const beaconID = to.params.beaconID as string
+
+        // Save to storage (as you had before)
         localStorage.setItem('beaconID', beaconID)
-        // Redirects to the root, which will then send to the default building
-        return { name: 'home' }
+
+        try {
+          // Call the service to find the building
+          const { buildingId } = (await beaconService.getBeaconBuilding(beaconID))
+
+          // Redirect to the *correct* building's recommend page
+          return { name: 'recommend', params: { buildingId: buildingId } }
+        } catch (error) {
+          console.error(
+            `Failed to find building for beacon ${beaconID}. Redirecting to default.`,
+            error,
+          )
+          // Fallback: Redirect to default building if beacon not found
+          return { name: 'recommend', params: { buildingId: DEFAULT_BUILDING_ID } }
+        }
       },
     },
   ],
