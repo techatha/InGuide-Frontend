@@ -15,7 +15,7 @@ export const useMapInfoStore = defineStore('mapInfo', () => {
   const dummyFloor = { floor: 3, floor_plan_url: '/src/assets/sample-img.jpg', id: 'sampleFloor' }
 
   const isMapInitialized = ref(false)
-  const current_buildingId = ref<string>('wcnWozOmfZc2zBXxgm1s')
+  const current_buildingId = ref<string | null>(null)
   const currentBuilding = ref<BuildingInfo | null>(null)
   const currentBuildingPOIs = ref<POI[]>([])
   const floors = ref<Floor[]>([])

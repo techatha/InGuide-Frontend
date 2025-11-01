@@ -59,6 +59,10 @@ const mapContainer = ref<HTMLElement | null>(null)
 
 const changeFloorPlan = async (floor: Floor) => {
   const build_id = mapInfo.current_buildingId
+  if(!build_id){
+    console.log("No building ID store on Pinia")
+    return
+  }
   mapInfo.current_floor = floor
   path.clearWalkablePaths()
   poi.removePOIs()
@@ -83,6 +87,11 @@ onMounted(async () => {
   // Wrap all async setup logic in one try...catch
   try {
     const build_id = mapInfo.current_buildingId
+    if(!build_id){
+      console.log("There is no buildID in pinia store T-T")
+      return
+    }
+
     const floors: Floor[] = await buildingService.getFloors(build_id)
     mapInfo.loadFloors(floors)
     mapInfo.current_floor = floors[0]
@@ -126,7 +135,6 @@ watch(
     poi.renderPOIs(pois)
   },
 )
-
 watch(
   () => mapInfo.current_floor,
   () => {

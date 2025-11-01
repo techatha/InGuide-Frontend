@@ -67,7 +67,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useTurnByTurn } from '@/composables/useTurnByTurn'
 import { findNearestBeacon } from '@/utils/findNearestBeacon'
 import { usePositioningSystem } from '@/composables/usePositioningSystem'
-// import { useMapInfoStore } from '@/stores/mapInfo'
+import { useMapInfoStore } from '@/stores/mapInfo'
 import type { Beacon } from '@/types/beacon'
 import { useBeaconStore } from '@/stores/beacon'
 import router from '@/router'
@@ -83,7 +83,7 @@ import {
 
 const showPopup = ref(false)
 
-// const mapInfo = useMapInfoStore()
+const mapInfo = useMapInfoStore()
 const beaconStore = useBeaconStore()
 const navigationStore = useNavigationStore()
 const {
@@ -103,6 +103,7 @@ const {
 const props = defineProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mapDisplayRef: any
+  buildingId: string
 }>()
 const position = usePositioningSystem()
 
@@ -118,6 +119,9 @@ const directionIcons: { [key: string]: IconDefinition } = {
 }
 
 onMounted(() => {
+  if (props.buildingId) {
+    mapInfo.changeBuilding(props.buildingId)
+  }
   if (navigationStore.navigationRoute.length === 0 || !navigationStore.currentRouteGraph) {
     console.warn('No navigation data found. Redirecting to recommendations.')
     router.push({ name: 'recommend' })

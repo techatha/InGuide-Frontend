@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, onMounted } from 'vue'
 import { useAppInitializer } from '@/composables/useAppInitializer'
 import { usePositioningSystem } from '@/composables/usePositioningSystem'
 import { useMapInfoStore } from '@/stores/mapInfo'
@@ -58,6 +58,7 @@ const positionIntervalId = ref<number | null>(null)
 const props = defineProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mapDisplayRef: any
+  buildingId: string
 }>()
 const position = usePositioningSystem()
 
@@ -260,7 +261,15 @@ watch(
     uiStore.fullExpand()
   },
 )
-
+watch(
+  () => props.buildingId,
+  (newBuildingId) => {
+    if (newBuildingId) {
+      // This async function will update the store
+      mapInfo.changeBuilding(newBuildingId)
+    }
+  }
+)
 // CHANGED: Add new watcher to restart the map interval when navigation ends
 watch(
   () => navigationStore.navigationRoute.length,
@@ -272,6 +281,17 @@ watch(
     }
   },
 )
+
+onMounted(() => {
+  if (props.buildingId) {
+    mapInfo.changeBuilding(props.buildingId)
+  }
+  // This check is the key
+  if (isAppInitialized.value) {
+    console.log('Component re-mounted, app is already initialized. Starting interval.')
+    startMapInterval()
+  }
+})
 
 // CHANGED: Add unmount hook to clean up the interval if the main view is ever destroyed
 onUnmounted(() => {

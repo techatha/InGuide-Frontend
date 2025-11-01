@@ -57,7 +57,7 @@ defineEmits<{ (e: 'navigate-to', poiId: string): void }>()
 
 async function fetchData(id: string) {
   uiStore.showDetail()
-  poi.value = await PoiService.getPOIById(building_id, id)
+  poi.value = await PoiService.getPOIById(building_id as string, id)
 }
 
 onMounted(() => { fetchData(props.id) })

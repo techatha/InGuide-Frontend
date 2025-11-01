@@ -24,7 +24,7 @@ const emit = defineEmits<{ (e: 'stop-map-interval'): void }>()
 
 onMounted(async () => {
   uiStore.startNavigate()
-  poi.value = await PoiService.getPOIById(mapInfo.current_buildingId, route.params.id as string)
+  poi.value = await PoiService.getPOIById(mapInfo.current_buildingId as string, route.params.id as string)
 })
 
 const startNavigate = () => {
