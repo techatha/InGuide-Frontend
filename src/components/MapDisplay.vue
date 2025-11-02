@@ -59,8 +59,8 @@ const mapContainer = ref<HTMLElement | null>(null)
 
 const changeFloorPlan = async (floor: Floor) => {
   const build_id = mapInfo.current_buildingId
-  if(!build_id){
-    console.log("No building ID store on Pinia")
+  if (!build_id) {
+    console.log('No building ID store on Pinia')
     return
   }
   mapInfo.current_floor = floor
@@ -135,7 +135,8 @@ async function loadMapData(build_id: string) {
     // --- Wait for the building info first ---
     // We need its bounds to set the map's view
     const building = await buildingPromise
-    if (!building || !building.NE_bound || !building.SW_bound) { // Assuming bounds are stored on the building object
+    if (!building || !building.NE_bound || !building.SW_bound) {
+      // Assuming bounds are stored on the building object
       console.error('Building data or bounds are missing!')
       return
     }
@@ -157,20 +158,20 @@ async function loadMapData(build_id: string) {
     const firstFloorPOIsPromise = PoiService.getPOIs(build_id, firstFloor.id)
 
     // --- Wait for ALL remaining promises to finish ---
-    const [
-      POIs,
-      newBeacons,
-      superGraph,
-      buildingPOIs
-    ] = await Promise.all([
+    const [POIs, newBeacons, superGraph, buildingPOIs] = await Promise.all([
       firstFloorPOIsPromise,
       beaconsPromise,
       superGraphPromise,
-      allPOIsPromise
+      allPOIsPromise,
     ])
 
     // --- Load all data into stores ---
-    mapInfo.loadPOIs(POIs)
+    if(!navigationStore.destinationID){
+      mapInfo.loadPOIs(POIs)
+    } else {
+      const singlePOI = mapInfo.findPOIbyId(navigationStore.destinationID)?.poi
+      if(singlePOI) mapInfo.loadPOIs([singlePOI])
+    }
     beaconStore.loadAllBeacons(newBeacons)
     navigationStore.setNavigationGraph(superGraph)
     mapInfo.loadBuildingAllPois(buildingPOIs)
@@ -183,7 +184,6 @@ async function loadMapData(build_id: string) {
     // Set initialized to true ONLY after everything has succeeded
     mapInfo.setMapInitialized(true)
     console.log('Map data initialization complete.')
-
   } catch (error) {
     console.error('Failed to initialize map or load essential data:', error)
   }
@@ -200,7 +200,7 @@ async function snapToPath(buildingId: string, floorId: string, position: [number
 function setUserPosition(
   newLatLng: [number, number],
   headingRad: number,
-  currentUserFloor: number | null
+  currentUserFloor: number | null,
 ) {
   if (!newLatLng[0] || !newLatLng[1]) {
     console.warn('Skipping setUserPosition because latlng is null')
@@ -281,7 +281,12 @@ function renderPOIs(pois: POI[]) {
   poi.renderPOIs(pois)
 }
 
-function snapToRoute(subgraph: NavigationGraph, position: [number, number], userFloor = 1, nodeToFloorMap: Map<string, number>): [number, number] {
+function snapToRoute(
+  subgraph: NavigationGraph,
+  position: [number, number],
+  userFloor = 1,
+  nodeToFloorMap: Map<string, number>,
+): [number, number] {
   const snappdePos = path.snapToRoute(subgraph, position, userFloor, nodeToFloorMap)
   console.log(snappdePos)
   return snappdePos
@@ -329,7 +334,21 @@ watch(
       // mapDisplay.clearAllLayers() // You'd need to add this function to useMap
     }
   },
-  { immediate: true } // This makes it run once when the component mounts
+  { immediate: true }, // This makes it run once when the component mounts
+)
+watch(
+  () => navigationStore.destinationID,
+  async (newDes) => {
+    if(!mapInfo.current_buildingId) return
+    if (!newDes) {
+      const POIs = await PoiService.getPOIs(mapInfo.current_buildingId, mapInfo.current_floor.id)
+      mapInfo.loadPOIs(POIs)
+
+    } else {
+      const POI = mapInfo.findPOIbyId(newDes)
+      if(POI) mapInfo.loadPOIs([POI.poi])
+    }
+  },
 )
 
 onMounted(async () => {
