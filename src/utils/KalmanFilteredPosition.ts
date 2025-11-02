@@ -12,7 +12,7 @@ export type Mode = 'forward' | 'turn' | 'halt'
 export function KalmanFilteredPosition() {
   const kf = ref<ExtendedKalmanFilter | null>(null)
   const Q = ref<math.Matrix | null>(null)
-  const maxAccel = 1.4
+  const maxAccel = 1.5
   let coordsTransform = coordinatesTransform()
   const distancePredictor = DistancePredictor()
 
@@ -71,7 +71,7 @@ export function KalmanFilteredPosition() {
       case 1:
         let kick_boost_acc = velo_n0
         if (velo_n0 < 0.5) {
-          kick_boost_acc = 0.7
+          kick_boost_acc = 1
         }
         result = distancePredictor.forward(
           east_n0,

@@ -11,7 +11,7 @@
         v-slot="{ Component }"
       >
         <keep-alive include="RecommendedView">
-          <component :is="Component" />
+          <component :is="Component" :current-user-floor="position.currentUserFloor.value" />
         </keep-alive>
       </RouterView>
     </div>
@@ -128,29 +128,42 @@ const startMapInterval = async () => {
       const userPos = position.getPosition()
       if (!userPos || !userPos[0] || !userPos[1]) return
 
-      // --- REMOVE FLOOR CHECK FROM HERE ---
-      // Always attempt to snap and set position during browsing.
-      // MapDisplay.vue's setUserPosition will handle visibility.
+      // --- THIS IS THE FIX for the interval ---
+      // 1. Get user's actual floor number
+      const userFloorNum = position.currentUserFloor.value
+
+      // 2. Find the floor ID for the user's actual floor
+      const userFloorData = mapInfo.floors.find((f) => f.floor === userFloorNum)
+
+      // 3. If user's floor isn't part of this building's data, do nothing
+      if (!userFloorData) {
+        // You might want to hide the marker explicitly here
+        // props.mapDisplayRef.hideUserPosition() // (if you have such a function)
+        return
+      }
+
+      const userActualFloorId = userFloorData.id
+      // --- END FIX ---
 
       const snappedPos = await props.mapDisplayRef.snapToPath(
         mapInfo.current_buildingId,
-        mapInfo.current_floor.id, // Ensure current_floor is valid here
+        userActualFloorId, // <-- USE THE CORRECTED ID
         userPos,
       )
       if (!snappedPos || !snappedPos[0] || !snappedPos[1]) return // Check snap result
 
       const heading = position.getRadHeading()
-      const currentFloor = position.currentUserFloor.value // Still needed for nearest beacon
 
       // Call the updated function - MapDisplay will decide to show/hide
       props.mapDisplayRef.setUserPosition(
         snappedPos as [number, number],
         heading,
-        currentFloor, // Pass the floor
+        userFloorNum, // Pass the user's actual floor number
       )
 
-      // Nearest beacon logic is fine, but only relevant if marker is shown
-      if (currentFloor === mapInfo.current_floor?.floor) {
+      // Nearest beacon logic
+      // This logic is now correct, as it compares the user's floor with the viewed floor
+      if (userFloorNum === mapInfo.current_floor?.floor) {
         const nearestBeacon = findNearestBeacon(
           snappedPos[0],
           snappedPos[1],
@@ -160,7 +173,6 @@ const startMapInterval = async () => {
           position.resetToBeacon(nearestBeacon.beacon)
         }
       }
-      // --- END CHANGE ---
     } catch (error) {
       console.error('Error inside map interval (Page 1):', error)
     }
@@ -191,8 +203,26 @@ const requestPermissions = async () => {
   }
 }
 
-const generateRoute = (poiId: string) => {
-  // 2. Get raw user position
+const generateRoute = async (poiId: string) => {
+  // 1. Get user's *actual* floor number
+  const userFloorNum = position.currentUserFloor.value
+  if (userFloorNum !== null) {
+    mapInfo.changeCurrentFloor(mapInfo.floors[userFloorNum - 1])
+  }
+
+  // 2. Find the floor object (and ID) that corresponds to the user's *actual* floor
+  //    (I'm assuming your store has 'buildingFloors' populated by 'changeBuilding')
+  const userFloorData = mapInfo.floors.find((f) => f.floor === userFloorNum)
+
+  if (!userFloorData) {
+    console.error(`Could not find floor data for user's floor number: ${userFloorNum}`)
+    alert('Could not determine your current floor to start navigation.')
+    return
+  }
+
+  const userActualFloorId = userFloorData.id // This is the ID of the floor the user is ON
+
+  // 3. Get raw user position
   const userPos = position.getPosition() as [number, number]
   if (!userPos || !userPos[0]) {
     console.error('Could not get user position to start navigation.')
@@ -202,22 +232,30 @@ const generateRoute = (poiId: string) => {
 
   // --- Add your try...catch here ---
   try {
-    // 3. Call the STORE's findPath function
-    const { pathIds, clonedGraph } = navigationStore.findPath(userPos, poiId)
+    // 4. Snap the user's position using their *ACTUAL* floor ID
+    const snappedPos = await props.mapDisplayRef.snapToPath(
+      mapInfo.current_buildingId,
+      userActualFloorId, // <-- THE FIX
+      userPos,
+    )
 
-    // 4. Check if a path was found
+    // 5. Call the STORE's findPath function
+    // The store is responsible for multi-floor routing from this starting point
+    const { pathIds, clonedGraph } = navigationStore.findPath(snappedPos, poiId)
+
+    // 6. Check if a path was found
     if (pathIds && pathIds.length > 0) {
-      // 5. Update the store
+      // 7. Update the store
       navigationStore.setNavigationRoute(pathIds)
       navigationStore.setCurrentRouteGraph(clonedGraph)
       navigationStore.setDestination(poiId)
 
-      // 6. Push to the overview route
+      // 8. Push to the overview route
       router.push({ name: 'navigationOverview', params: { id: poiId } })
     } else {
       console.error('Could not find a path to that destination.')
       alert('A path to that destination could not be found.')
-      // 7. Don't restart the interval. Just let the user try again.
+      // 9. Don't restart the interval. Just let the user try again.
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
@@ -270,7 +308,7 @@ watch(
       mapInfo.changeBuilding(newBuildingId)
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 // CHANGED: Add new watcher to restart the map interval when navigation ends
 watch(

@@ -1,5 +1,5 @@
 <template>
-  <div id="navigation-top-container" v-if="currentDirection != 'FINISH'">
+  <div id="navigation-top-container" v-if="!isAtDestination">
     <div id="instruction-box">
       <div>
         <div id="direction-indicator">
@@ -27,7 +27,7 @@
   </div>
 
   <div id="navigation-bottom-container">
-    <div v-if="currentDirection != 'FINISH'">
+    <div v-if="!isAtDestination">
       <p id="time-to-destination">{{ estimatedTime }} min</p>
     </div>
     <div v-else>
@@ -41,7 +41,7 @@
         </div>
         <p>{{ distanceToNextTurn }} m.</p>
       </div>
-      <div id="instruction-text">{{ currentInstruction }}</div>
+      <div id="instruction-text">You have arrived at your destination!</div>
     </div>
     <div id="bottom-details">
       <p>{{ totalDistance }} m.</p>
@@ -119,6 +119,7 @@ const directionIcons: { [key: string]: IconDefinition } = {
 }
 
 onMounted(() => {
+  window.scrollTo(0, 0)
   if (props.buildingId) {
     mapInfo.changeBuilding(props.buildingId)
   }
@@ -177,6 +178,11 @@ watch(isAtDestination, (hasArrived) => {
       console.log('Timer finished. Redirecting...')
       handleExit()
     }, finishTimeout)
+  }
+})
+watch(position.currentUserFloor, (newFloorValue) => {
+  if (newFloorValue !== null) {
+    mapInfo.changeCurrentFloor(mapInfo.floors[newFloorValue - 1])
   }
 })
 

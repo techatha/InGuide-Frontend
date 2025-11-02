@@ -25,6 +25,7 @@ const navigationStore = useNavigationStore()
 const uiStore = useUIMenuPanelStore()
 
 const poi = ref<POI | null>(null)
+const isNavigating = ref(false) // <-- Flag to track navigation start
 
 const emit = defineEmits<{ (e: 'stop-map-interval'): void }>()
 
@@ -32,9 +33,13 @@ const startNavigate = () => {
   try {
     if (!poi.value) {
       console.error('There is no destination selected')
+      return // <-- Added return
     }
     console.log(poi.value?.id)
     emit('stop-map-interval')
+
+    isNavigating.value = true // <-- Set flag before navigating
+
     // router push
     router.push({ name: 'navigate', params: { id: route.params.id } })
   } catch (error) {
@@ -61,7 +66,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  navigationStore.clearNavigation()
+  // Only clear if we are NOT navigating
+  if (!isNavigating.value) {
+    navigationStore.clearNavigation()
+  }
 })
 </script>
 

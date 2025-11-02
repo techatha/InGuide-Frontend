@@ -1,7 +1,5 @@
-<!-- eslint-disable @typescript-eslint/no-unused-vars -->
 <template>
   <div class="map-view">
-    <!-- Placeholder for Leaflet -->
     <div id="map" ref="mapContainer"></div>
 
     <div class="floor-list">
@@ -66,8 +64,27 @@ const changeFloorPlan = async (floor: Floor) => {
   mapInfo.current_floor = floor
   path.clearWalkablePaths()
   poi.removePOIs()
-  const newPOIs = await PoiService.getPOIs(build_id, floor.id)
-  mapInfo.loadPOIs(newPOIs)
+
+  // --- START MODIFICATION ---
+  const destinationID = navigationStore.destinationID
+  if (destinationID) {
+    // A destination is set. Only show it if it's on this floor.
+    const destinationPOIInfo = mapInfo.findPOIbyId(destinationID)
+
+    if (destinationPOIInfo?.floor && destinationPOIInfo.floor.id === floor.id) {
+      // The destination is on the floor we just clicked. Render only it.
+      mapInfo.loadPOIs([destinationPOIInfo.poi])
+    } else {
+      // The destination is on a *different* floor. Render nothing.
+      mapInfo.loadPOIs([])
+    }
+  } else {
+    // No destination is set. Load all POIs for this floor.
+    const newPOIs = await PoiService.getPOIs(build_id, floor.id)
+    mapInfo.loadPOIs(newPOIs)
+  }
+  // --- END MODIFICATION ---
+
   // path.renderFloorPaths(build_id, floor.id)
   // reload new POIs
   const allPOIs = await PoiService.getAllPOIs(build_id)
@@ -166,15 +183,32 @@ async function loadMapData(build_id: string) {
     ])
 
     // --- Load all data into stores ---
-    if(!navigationStore.destinationID){
-      mapInfo.loadPOIs(POIs)
-    } else {
-      const singlePOI = mapInfo.findPOIbyId(navigationStore.destinationID)?.poi
-      if(singlePOI) mapInfo.loadPOIs([singlePOI])
-    }
+
+    // --- NEW: Load all POIs FIRST so findPOIbyId works ---
+    mapInfo.loadBuildingAllPois(buildingPOIs)
+
     beaconStore.loadAllBeacons(newBeacons)
     navigationStore.setNavigationGraph(superGraph)
-    mapInfo.loadBuildingAllPois(buildingPOIs)
+
+    // --- START MODIFICATION ---
+    const destinationID = navigationStore.destinationID
+    if (!destinationID) {
+      // No destination, load all POIs for the first floor
+      mapInfo.loadPOIs(POIs) // POIs is already firstFloorPOIs
+    } else {
+      // Destination is set. Check if it's on the first floor.
+      const destinationPOIInfo = mapInfo.findPOIbyId(destinationID)
+
+      // firstFloor.id is the ID of the floor we are about to display
+      if (destinationPOIInfo?.floor && destinationPOIInfo.floor.id === firstFloor.id) {
+        // Destination is on the first floor. Render only it.
+        mapInfo.loadPOIs([destinationPOIInfo.poi])
+      } else {
+        // Destination is on another floor. Render nothing.
+        mapInfo.loadPOIs([])
+      }
+    }
+    // --- END MODIFICATION ---
 
     console.log('Super graph and all data loaded.')
 
@@ -248,10 +282,6 @@ function clearRenderedPath() {
 function updateRouteProgressView(userPosition: [number, number], currentUserFloor: number | null) {
   const mapFloor = mapInfo.current_floor?.floor
   if (currentUserFloor === null || mapFloor === undefined || currentUserFloor !== mapFloor) {
-    // If user's floor is unknown, map floor is unknown, or they don't match,
-    // DO NOT update the progress view for this floor.
-    // Keep the existing full segment drawn by renderRoute.
-    // console.log(`Skipping updateRouteProgressView: User floor (${currentUserFloor}) != Map floor (${mapFloor})`);
     return
   }
   // 1. Get the currently displayed route from the Leaflet layer
@@ -269,12 +299,16 @@ function updateRouteProgressView(userPosition: [number, number], currentUserFloo
     latlng.lat,
     latlng.lng,
   ])
+  try {
+    // 2. Ask the `path` composable to do the complex splitting logic
+    const { traversed, upcoming } = path.splitRouteAtPoint(fullRouteCoords, userPosition)
 
-  // 2. Ask the `path` composable to do the complex splitting logic
-  const { traversed, upcoming } = path.splitRouteAtPoint(fullRouteCoords, userPosition)
-
-  // 3. Tell the `path` composable to render the new split view
-  path.renderRouteProgress(traversed, upcoming)
+    // 3. Tell the `path` composable to render the new split view
+    path.renderRouteProgress(traversed, upcoming)
+  } catch (error) {
+    console.log(error)
+    console.log('use: ', fullRouteCoords, userPosition)
+  }
 }
 
 function renderPOIs(pois: POI[]) {
@@ -339,14 +373,24 @@ watch(
 watch(
   () => navigationStore.destinationID,
   async (newDes) => {
-    if(!mapInfo.current_buildingId) return
+    if (!mapInfo.current_buildingId) return
+
     if (!newDes) {
+      // Destination was cleared. Load all POIs for the *currently viewed* floor.
       const POIs = await PoiService.getPOIs(mapInfo.current_buildingId, mapInfo.current_floor.id)
       mapInfo.loadPOIs(POIs)
-
     } else {
-      const POI = mapInfo.findPOIbyId(newDes)
-      if(POI) mapInfo.loadPOIs([POI.poi])
+      // A new destination was set.
+      const destinationPOIInfo = mapInfo.findPOIbyId(newDes)
+
+      // Check if the destination's floor matches the *currently viewed* map floor
+      if (destinationPOIInfo?.floor && destinationPOIInfo.floor.id === mapInfo.current_floor.id) {
+        // The new destination is on the *currently viewed* floor. Render only it.
+        mapInfo.loadPOIs([destinationPOIInfo.poi])
+      } else {
+        // The new destination is on a *different* floor. Render nothing on this floor.
+        mapInfo.loadPOIs([])
+      }
     }
   },
 )

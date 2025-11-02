@@ -1,5 +1,3 @@
-// src/composables/useTurnByTurn.ts
-
 import { ref, computed } from 'vue'
 import * as turf from '@turf/turf'
 import type { NavigationGraph } from '@/types/path' // Import MapNode
@@ -8,6 +6,7 @@ import { useMapInfoStore } from '@/stores/mapInfo'
 import { usePositioningSystem } from './usePositioningSystem'
 
 const WALKING_SPEED_MPS = 1.4 // meters per second
+const PORTAL_WAIT_MS = 10000 // 5 seconds
 
 export function useTurnByTurn() {
   const navigationStore = useNavigationStore()
@@ -24,6 +23,9 @@ export function useTurnByTurn() {
   const totalDistance = ref(0)
   const estimatedTime = ref(0)
   const arrivalTime = ref<Date | null>(null)
+
+  // --- NEW: Timer state for portals ---
+  const portalEntryTime = ref<number | null>(null)
 
   // A map to store which floor each node ID belongs to
   const nodeToFloorMap = new Map<string, number>() // Map nodeId -> floor number
@@ -44,6 +46,7 @@ export function useTurnByTurn() {
     essentialNodeIds.value = []
     currentStepIndex.value = 0
     isAtDestination.value = false
+    portalEntryTime.value = null // <-- NEW: Reset portal timer
     nodeToFloorMap.clear() // Clear the floor map for the new route
 
     if (pathIds.length < 2) {
@@ -54,7 +57,6 @@ export function useTurnByTurn() {
     }
 
     // --- 1. Build Node-to-Floor Lookup ---
-    // Use the graphs stored on each floor object in mapInfo
     mapInfo.floors.forEach((floor) => {
       if (floor.graph && floor.graph.nodes) {
         floor.graph.nodes.forEach((node) => {
@@ -62,16 +64,11 @@ export function useTurnByTurn() {
         })
       }
     })
-    // Also add nodes from the currentRouteGraph (like POIs/temp node)
-    // This helps find floors for nodes not in the base floor graphs
     graph.nodes.forEach((node) => {
       if (!nodeToFloorMap.has(node.id)) {
-        // This is a simple fallback, assuming a node not in the floor graphs
-        // belongs to the *current* floor (e.g., the temp user node)
         if (position.currentUserFloor.value !== null) {
-            nodeToFloorMap.set(node.id, position.currentUserFloor.value);
+          nodeToFloorMap.set(node.id, position.currentUserFloor.value)
         }
-        // console.warn(`Node ${node.id} not found in floor graphs.`);
       }
     })
 
@@ -191,10 +188,10 @@ export function useTurnByTurn() {
           instructions.value.push(instruction)
           directions.value.push(turn)
           essentialNodeIds.value.push(pathIds[i + 1])
+
         }
       }
     }
-
     // --- 5. Handle Final Straight Segment ---
     if (currentStraightDistance > 1) {
       instructions.value.push(`Go straight for ${Math.round(currentStraightDistance)} meters.`)
@@ -202,15 +199,14 @@ export function useTurnByTurn() {
     }
 
     // --- 6. Arrival Instruction ---
-    instructions.value.push('You have arrived at your destination.')
+    instructions.value.push('Your destination is ahead.')
     directions.value.push('FINISH')
     essentialNodeIds.value.push(pathIds[pathIds.length - 1])
 
     // --- 7. Initial Metrics ---
-    // Use the *actual* start node (the temp node) for the first metric calculation
-    const startNode = nodes.get(pathIds[0]);
+    const startNode = nodes.get(pathIds[0])
     if (startNode) {
-      updateRouteMetrics(startNode.coordinates);
+      updateRouteMetrics(startNode.coordinates)
     }
 
     console.log('Generated Instructions:', instructions.value)
@@ -220,7 +216,7 @@ export function useTurnByTurn() {
 
   /**
    * Updates the user's progress along the route, advancing the current instruction step.
-   * This is the function you asked for, with both proximity and confirmation checks.
+   * This version uses a timer to auto-advance past portal steps.
    */
   function updateUserProgress(userPos: [number, number]) {
     const graph = navigationStore.currentRouteGraph
@@ -234,7 +230,7 @@ export function useTurnByTurn() {
     }
 
     // --- Arrival Check ---
-    const destinationNodeId = navigationStore.destinationID ?? '' // Use stored destination ID
+    const destinationNodeId = navigationStore.destinationID ?? ''
     const destinationNode = graph.nodes.get(destinationNodeId)
     const destinationFloor = nodeToFloorMap.get(destinationNodeId)
     if (destinationNode) {
@@ -266,10 +262,83 @@ export function useTurnByTurn() {
       return
     }
 
+    // --- NEW: Portal Timer Logic ---
+    if (currentDirection.value === 'PORTAL') {
+      const portalNodeId = essentialIds[currentStepIndex.value] // Portal entrance node
+      const portalNode = graph.nodes.get(portalNodeId)
+
+      if (portalNode) {
+        const userPoint = turf.point(switchLatLng(userPos))
+        const portalPoint = turf.point(switchLatLng(portalNode.coordinates))
+        const distToPortal = turf.distance(userPoint, portalPoint, { units: 'meters' })
+
+        // Only start/check timer if user is *at* the portal
+        if (distToPortal < 10) {
+          if (portalEntryTime.value === null) {
+            // Start the timer
+            portalEntryTime.value = Date.now()
+            console.log('PORTAL: Timer started.')
+          } else {
+            // Timer is running, check elapsed time
+            const elapsed = Date.now() - portalEntryTime.value
+            if (elapsed >= PORTAL_WAIT_MS) {
+              console.log('PORTAL: 5s timer elapsed. Advancing step.')
+
+              // 1. Advance Step
+              currentStepIndex.value++
+
+              // 2. Manually Change Floor
+              const portalExitNodeId = essentialIds[currentStepIndex.value] // Portal exit node
+              const newFloor = nodeToFloorMap.get(portalExitNodeId)
+              if (newFloor !== undefined && newFloor !== null) {
+                position.setCurrentFloor(newFloor) // <-- This is what you wanted
+              } else {
+                console.warn(`Could not determine floor after portal (Timer) at node ${portalExitNodeId}`)
+              }
+
+              // 3. Reset Timer
+              portalEntryTime.value = null
+
+              // 4. Recalculate distance to the *new* next turn
+              const newNextTargetId = essentialIds[currentStepIndex.value + 1]
+              const newNextTargetNode = newNextTargetId ? graph.nodes.get(newNextTargetId) : null
+              if (newNextTargetNode) {
+                const newTargetPoint = turf.point(switchLatLng(newNextTargetNode.coordinates))
+                distanceToNextTurn.value = Math.round(
+                  turf.distance(userPoint, newTargetPoint, { units: 'meters' }),
+                )
+              } else if (destinationNode) {
+                distanceToNextTurn.value = Math.round(
+                  turf.distance(userPoint, turf.point(switchLatLng(destinationNode.coordinates)), {
+                    units: 'meters',
+                  }),
+                )
+              } else {
+                distanceToNextTurn.value = 0
+              }
+            }
+          }
+        } else {
+          // User walked away from portal, cancel timer
+          if (portalEntryTime.value !== null) {
+            console.log('PORTAL: User walked away, timer cancelled.')
+            portalEntryTime.value = null
+          }
+        }
+      }
+      // Stop normal proximity/confirmation checks from running
+      updateRouteMetrics(userPos)
+      return
+    } else {
+      // Not a portal step, ensure timer is reset
+      portalEntryTime.value = null
+    }
+    // --- END: Portal Timer Logic ---
+
     // --- Advance Instruction Logic ---
     const nextTargetNodeId = essentialIds[currentStepIndex.value + 1]
     const nextTargetNode = graph.nodes.get(nextTargetNodeId)
-    let instructionAdvancedThisCycle = false; // Flag to prevent double advance
+    let instructionAdvancedThisCycle = false // Flag to prevent double advance
 
     // --- 1. Proximity Check (Primary) ---
     if (nextTargetNode) {
@@ -281,41 +350,48 @@ export function useTurnByTurn() {
 
       const updateThreshold = 8 // meters
       if (distanceToNext < updateThreshold) {
-        console.log(currentInstruction.value, "Next node :", nextTargetNode?.id)
+        console.log(currentInstruction.value, 'Next node :', nextTargetNode?.id)
         currentStepIndex.value++
-        instructionAdvancedThisCycle = true; // Mark that we advanced
+        instructionAdvancedThisCycle = true // Mark that we advanced
 
-        // Check if the instruction we just *completed* was a portal
-        const completedInstructionDirection = directions.value[currentStepIndex.value - 1];
+        // This portal logic will now only run if the floor changes *instantly*
+        // (e.g. a small staircase) before the timer logic above kicks in.
+        const completedInstructionDirection = directions.value[currentStepIndex.value - 1]
         if (completedInstructionDirection === 'PORTAL') {
-          const portalExitNodeId = essentialIds[currentStepIndex.value];
-          const newFloor = nodeToFloorMap.get(portalExitNodeId);
+          const portalExitNodeId = essentialIds[currentStepIndex.value]
+          const newFloor = nodeToFloorMap.get(portalExitNodeId)
           if (newFloor !== undefined && newFloor !== null) {
-            position.setCurrentFloor(newFloor);
+            position.setCurrentFloor(newFloor)
           } else {
-            console.warn(`Could not determine floor after portal (Proximity) at node ${portalExitNodeId}`);
+            console.warn(
+              `Could not determine floor after portal (Proximity) at node ${portalExitNodeId}`,
+            )
           }
         }
 
         // Recalculate distance to the *new* next turn
-        const newNextTargetId = essentialIds[currentStepIndex.value + 1];
-        const newNextTargetNode = newNextTargetId ? graph.nodes.get(newNextTargetId) : null;
+        const newNextTargetId = essentialIds[currentStepIndex.value + 1]
+        const newNextTargetNode = newNextTargetId ? graph.nodes.get(newNextTargetId) : null
         if (newNextTargetNode) {
-          const newTargetPoint = turf.point(switchLatLng(newNextTargetNode.coordinates));
+          const newTargetPoint = turf.point(switchLatLng(newNextTargetNode.coordinates))
           distanceToNextTurn.value = Math.round(
             turf.distance(userPoint, newTargetPoint, { units: 'meters' }),
           )
         } else {
           // If no new target, calculate distance to final destination
-          if(destinationNode){
-            distanceToNextTurn.value = Math.round(turf.distance(userPoint, turf.point(switchLatLng(destinationNode.coordinates)), { units: 'meters' }));
+          if (destinationNode) {
+            distanceToNextTurn.value = Math.round(
+              turf.distance(userPoint, turf.point(switchLatLng(destinationNode.coordinates)), {
+                units: 'meters',
+              }),
+            )
           } else {
-             distanceToNextTurn.value = 0;
+            distanceToNextTurn.value = 0
           }
         }
       }
     } else {
-      console.error(`Could not find next target node: ${nextTargetNodeId}`);
+      console.error(`Could not find next target node: ${nextTargetNodeId}`)
       distanceToNextTurn.value = 0
       updateRouteMetrics(userPos)
     }
@@ -323,77 +399,85 @@ export function useTurnByTurn() {
     // --- 2. Confirmation Check (Fallback) ---
     // Only run if proximity didn't already advance the instruction
     if (!instructionAdvancedThisCycle && currentStepIndex.value < essentialIds.length - 1) {
-      const currentTargetNodeId = essentialIds[currentStepIndex.value];
-      const currentTargetInFullPathIndex = fullPathIds.indexOf(currentTargetNodeId);
-      const userCurrentFloor = position.currentUserFloor.value; // Get the user's current floor
+      const currentTargetNodeId = essentialIds[currentStepIndex.value]
+      const currentTargetInFullPathIndex = fullPathIds.indexOf(currentTargetNodeId)
+      const userCurrentFloor = position.currentUserFloor.value // Get the user's current floor
 
-      let closestFullPathSegmentIndex = -1;
-      let minDistanceToFullPathSegment = Infinity;
+      let closestFullPathSegmentIndex = -1
+      let minDistanceToFullPathSegment = Infinity
 
       for (let i = 0; i < fullPathIds.length - 1; i++) {
-        const fromNodeId = fullPathIds[i];
-        const toNodeId = fullPathIds[i+1];
+        const fromNodeId = fullPathIds[i]
+        const toNodeId = fullPathIds[i + 1]
 
-        const fromCoord = graph.nodes.get(fromNodeId)?.coordinates;
-        const toCoord = graph.nodes.get(toNodeId)?.coordinates;
-        if (!fromCoord || !toCoord) continue;
+        const fromCoord = graph.nodes.get(fromNodeId)?.coordinates
+        const toCoord = graph.nodes.get(toNodeId)?.coordinates
+        if (!fromCoord || !toCoord) continue
 
-        // --- THIS IS THE FIX ---
-        // Get the floor of this segment (using its starting node)
-        const segmentFloor = nodeToFloorMap.get(fromNodeId);
-
-        // Only check segments that are on the user's current floor
+        const segmentFloor = nodeToFloorMap.get(fromNodeId)
         if (segmentFloor !== userCurrentFloor) {
-            continue; // Skip this segment, it's on a different floor
-        }
-        // --- END FIX ---
-
-        const fromNode = graph.nodes.get(fromNodeId);
-        const toNode = graph.nodes.get(toNodeId);
-        // Skip virtual portal segments (this is still correct)
-        if (fromNode?.portalGroup && toNode?.portalGroup && fromNode.portalGroup === toNode.portalGroup) {
-          continue;
+          continue
         }
 
-        const line = turf.lineString([switchLatLng(fromCoord), switchLatLng(toCoord)]);
-        const point = turf.point(switchLatLng(userPos));
-        const dist = turf.pointToLineDistance(point, line, { units: 'meters' });
+        const fromNode = graph.nodes.get(fromNodeId)
+        const toNode = graph.nodes.get(toNodeId)
+        if (
+          fromNode?.portalGroup &&
+          toNode?.portalGroup &&
+          fromNode.portalGroup === toNode.portalGroup
+        ) {
+          continue
+        }
+
+        const line = turf.lineString([switchLatLng(fromCoord), switchLatLng(toCoord)])
+        const point = turf.point(switchLatLng(userPos))
+        const dist = turf.pointToLineDistance(point, line, { units: 'meters' })
 
         if (dist < minDistanceToFullPathSegment) {
-          minDistanceToFullPathSegment = dist;
-          closestFullPathSegmentIndex = i;
+          minDistanceToFullPathSegment = dist
+          closestFullPathSegmentIndex = i
         }
       }
 
-      // If user's closest segment (on their floor) is at or after the current target's segment, advance
-      if (closestFullPathSegmentIndex >= currentTargetInFullPathIndex && currentTargetInFullPathIndex !== -1) {
-        console.log(`Confirmation Check Passed: Advancing step.`);
-        currentStepIndex.value++;
+      // --- FIX: Change >= to > to prevent skipping turn instructions ---
+      if (closestFullPathSegmentIndex > currentTargetInFullPathIndex && currentTargetInFullPathIndex !== -1) {
+        console.log(`Confirmation Check Passed: Advancing step.`)
+        currentStepIndex.value++
 
-        // --- DUPLICATED LOGIC (This is all correct) ---
-        const completedInstructionDirection = directions.value[currentStepIndex.value - 1];
+        // This portal logic is for the "Confirmation Check"
+        const completedInstructionDirection = directions.value[currentStepIndex.value - 1]
         if (completedInstructionDirection === 'PORTAL') {
-          const portalExitNodeId = essentialIds[currentStepIndex.value];
-          const newFloor = nodeToFloorMap.get(portalExitNodeId);
+          const portalExitNodeId = essentialIds[currentStepIndex.value]
+          const newFloor = nodeToFloorMap.get(portalExitNodeId)
           if (newFloor !== undefined && newFloor !== null) {
-            position.setCurrentFloor(newFloor);
+            position.setCurrentFloor(newFloor)
           } else {
-            console.warn(`Could not determine floor after portal (Confirmation) at node ${portalExitNodeId}`);
+            console.warn(
+              `Could not determine floor after portal (Confirmation) at node ${portalExitNodeId}`,
+            )
           }
         }
 
         // Recalculate distance to the *new* next turn
-        const newNextTargetId = essentialIds[currentStepIndex.value + 1];
-        const newNextTargetNode = newNextTargetId ? graph.nodes.get(newNextTargetId) : null;
+        const newNextTargetId = essentialIds[currentStepIndex.value + 1]
+        const newNextTargetNode = newNextTargetId ? graph.nodes.get(newNextTargetId) : null
         if (newNextTargetNode) {
-          const userPoint = turf.point(switchLatLng(userPos));
-          const newTargetPoint = turf.point(switchLatLng(newNextTargetNode.coordinates));
-          distanceToNextTurn.value = Math.round(turf.distance(userPoint, newTargetPoint, { units: 'meters' }));
+          const userPoint = turf.point(switchLatLng(userPos))
+          const newTargetPoint = turf.point(switchLatLng(newNextTargetNode.coordinates))
+          distanceToNextTurn.value = Math.round(
+            turf.distance(userPoint, newTargetPoint, { units: 'meters' }),
+          )
         } else {
           if (destinationNode) {
-            distanceToNextTurn.value = Math.round(turf.distance(turf.point(switchLatLng(userPos)), turf.point(switchLatLng(destinationNode.coordinates)), { units: 'meters' }));
+            distanceToNextTurn.value = Math.round(
+              turf.distance(
+                turf.point(switchLatLng(userPos)),
+                turf.point(switchLatLng(destinationNode.coordinates)),
+                { units: 'meters' },
+              ),
+            )
           } else {
-            distanceToNextTurn.value = 0;
+            distanceToNextTurn.value = 0
           }
         }
         // --- END DUPLICATED LOGIC ---
@@ -434,6 +518,10 @@ export function useTurnByTurn() {
         fromNode.portalGroup === toNode.portalGroup
       ) {
         continue
+      }
+      if (from[0] === to[0] && from[1] === to[1]) {
+        console.warn('Skipping zero-length segment in route metrics.');
+        continue; // Go to the next loop iteration
       }
       const line = turf.lineString([switchLatLng(from), switchLatLng(to)])
       const snapped = turf.nearestPointOnLine(line, userPoint)
