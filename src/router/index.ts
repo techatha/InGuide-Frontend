@@ -61,7 +61,7 @@ const router = createRouter({
       props: true,
     },
     {
-      path: '/beacon/:beaconID',
+      path: '/initbuilding/:beaconID',
       name: 'beaconRedirect',
       component: RedirectView,
       beforeEnter: async (to) => {

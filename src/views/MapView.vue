@@ -1,10 +1,10 @@
 <template>
   <SearchBar />
   <MenuPanel>
-    <div v-show="uiStore.isSearchFocused || uiStore.searchQuery.length > 0">
+    <div v-if="uiStore.isSearchFocused || uiStore.searchQuery.length > 0">
       <SearchResultsView />
     </div>
-    <div v-show="!uiStore.isSearchFocused">
+    <div v-else>
       <RouterView
         @navigate-to="generateRoute"
         @stop-map-interval="stopMapInterval"

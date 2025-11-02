@@ -1,5 +1,5 @@
 <template>
-  <div class="tag-section">
+  <!-- <div class="tag-section">
     <h3 class="panel-title">Finding Nearby</h3>
     <div class="tag-container">
       <CategoryChip label="Restroom" icon="restroom" colorClass="restroom" />
@@ -8,7 +8,7 @@
       <CategoryChip label="Computer Lab" icon="desktop" colorClass="lab" />
       <CategoryChip label="Advance Finding" icon="filter" colorClass="advance" />
     </div>
-  </div>
+  </div> -->
   <div>
     <h3 class="panel-title">Search Results</h3>
     <template v-if="uiStore.searchResults.length > 0">
@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import CategoryChip from '@/components/CategoryChip.vue'
+// import CategoryChip from '@/components/CategoryChip.vue'
 import PoiCard from '@/components/PoiCard.vue'
 import { useMapInfoStore } from '@/stores/mapInfo'
 import { useUIMenuPanelStore } from '@/stores/uiMenuPanel'
