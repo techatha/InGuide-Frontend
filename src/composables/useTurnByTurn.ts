@@ -440,7 +440,7 @@ export function useTurnByTurn() {
       }
 
       // --- FIX: Change >= to > to prevent skipping turn instructions ---
-      if (closestFullPathSegmentIndex > currentTargetInFullPathIndex && currentTargetInFullPathIndex !== -1) {
+      if (closestFullPathSegmentIndex >= currentTargetInFullPathIndex && currentTargetInFullPathIndex !== -1) {
         console.log(`Confirmation Check Passed: Advancing step.`)
         currentStepIndex.value++
 
